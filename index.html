@@ -1,0 +1,1586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BAVA TECH - Work Allocation Portal (Live Team Sync)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-6">
+
+  <div class="max-w-7xl mx-auto space-y-6">
+    <!-- Header -->
+    <header class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <span class="bg-blue-600 text-white p-3 rounded-xl font-black text-xl shadow-lg shadow-blue-500/20">BT</span>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-2xl font-black text-white">BAVA TECH Work Allocation Portal</h1>
+            <span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> LIVE SYNC ACTIVE
+            </span>
+          </div>
+          <p class="text-slate-400 text-xs font-medium">Engineering BoM & Luminovo Workflow Automation</p>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2.5 bg-slate-900 border border-slate-700 p-2 rounded-xl">
+        <div class="flex items-center gap-1.5 px-2">
+          <label class="text-[11px] text-slate-400 font-semibold uppercase">Date:</label>
+          <input type="date" id="datePicker" onchange="onDateChange()" class="bg-slate-800 text-xs font-bold text-blue-400 px-2 py-1 rounded-lg border border-slate-700 focus:outline-none cursor-pointer" />
+        </div>
+
+        <div class="flex items-center gap-1.5 px-2 border-l border-slate-700">
+          <label class="text-[11px] text-slate-400 font-semibold uppercase">Allocation By:</label>
+          <select id="headerAllocatedBy" onchange="saveHeaderRoles()" class="bg-slate-800 text-xs font-bold text-blue-300 px-2.5 py-1 rounded-lg border border-slate-700 focus:outline-none cursor-pointer"></select>
+        </div>
+
+        <div class="flex items-center gap-1.5 px-2 border-l border-slate-700">
+          <label class="text-[11px] text-slate-400 font-semibold uppercase">Shipment By:</label>
+          <select id="headerShipmentBy" onchange="saveHeaderRoles()" class="bg-slate-800 text-xs font-bold text-emerald-400 px-2.5 py-1 rounded-lg border border-slate-700 focus:outline-none cursor-pointer"></select>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-wrap items-center gap-2 border-l border-slate-700 pl-2">
+          <button onclick="downloadEmailWordDoc()" title="Download Email Format as Word Document" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-3.5 py-2 rounded-lg transition shadow-lg flex items-center gap-1.5 ring-1 ring-indigo-400">
+            <span>📄</span> Word Email (.doc)
+          </button>
+
+          <button onclick="openEmailPreviewModal()" title="Preview and copy email text" class="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-3 py-2 rounded-lg transition shadow-lg flex items-center gap-1.5">
+            <span>📋</span> Copy Email
+          </button>
+
+          <button onclick="downloadDailyReport()" title="Download Pricing Allocation Sheet Excel" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3 py-2 rounded-lg transition shadow-lg flex items-center gap-1.5">
+            <span>📥</span> Excel Sheet (.csv)
+          </button>
+
+          <button onclick="openModal()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-3.5 py-2 rounded-lg transition shadow-lg">
+            + New Allocation
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Metrics Bar -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-4">
+        <p class="text-xs text-slate-400 font-semibold">Active Team Members</p>
+        <p class="text-2xl font-bold text-white mt-1">7 Resources</p>
+      </div>
+      <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-4">
+        <p class="text-xs text-slate-400 font-semibold">Total Allocations</p>
+        <p class="text-2xl font-bold text-blue-400 mt-1" id="totalBomsCount">0</p>
+      </div>
+      <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-4">
+        <p class="text-xs text-slate-400 font-semibold">Total Files</p>
+        <p class="text-2xl font-bold text-emerald-400 mt-1" id="totalVseFilesCount">0</p>
+      </div>
+      <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-4">
+        <p class="text-xs text-amber-400 font-semibold">Exists in Luminovo</p>
+        <p class="text-2xl font-bold text-amber-400 mt-1" id="existsLuminovoCount">0</p>
+      </div>
+    </div>
+
+    <!-- Team Performance Summary Table -->
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-bold text-sm text-slate-200 flex items-center gap-2">
+          <span>📊</span> Team Daily Performance Overview (<span id="summaryDateLabel" class="text-blue-400"></span>)
+        </h3>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-700">
+            <tr>
+              <th class="py-2.5 px-3">Resource Name</th>
+              <th class="py-2.5 px-3 text-center">VSE Creation</th>
+              <th class="py-2.5 px-3 text-center">VSE Review</th>
+              <th class="py-2.5 px-3 text-center">PDF Prep</th>
+              <th class="py-2.5 px-3 text-center">Prep Review</th>
+              <th class="py-2.5 px-3 text-center">Lum. Upload</th>
+              <th class="py-2.5 px-3 text-center">Lum. Review</th>
+              <th class="py-2.5 px-3 text-center font-bold text-blue-400">Total Done</th>
+            </tr>
+          </thead>
+          <tbody id="teamSummaryBody" class="divide-y divide-slate-700/60"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="lg:col-span-2 space-y-4">
+        <h2 class="text-lg font-bold text-slate-200">Active Task Allocation Pipeline</h2>
+        <div id="cardsContainer" class="space-y-6"></div>
+      </div>
+
+      <!-- Live Activity Feed -->
+      <div class="space-y-6">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-bold text-sm text-slate-200 flex items-center gap-2">
+              <span class="text-amber-400">🔔</span> Live Activity Feed
+            </h3>
+            <span class="text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full font-semibold">Cloud Sync</span>
+          </div>
+          <div id="notificationList" class="space-y-2.5 max-h-[480px] overflow-y-auto pr-1"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Modal -->
+  <div id="createModal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-5xl shadow-2xl max-h-[90vh] flex flex-col">
+      <h3 class="text-lg font-bold text-white mb-1">Create Task Allocation</h3>
+      <p class="text-xs text-slate-400 mb-4">Select Workflow Type and assign individual owners for each stage.</p>
+      
+      <form onsubmit="handleCreateTask(event)" class="space-y-4 overflow-y-auto pr-2 flex-1">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-900/90 border border-slate-700 p-3.5 rounded-xl">
+          <div>
+            <label class="block text-xs font-bold text-blue-400 mb-1 uppercase">Workflow Mode</label>
+            <select id="modalGlobalType" onchange="renderModalFilesList()" class="w-full bg-slate-800 border border-slate-700 text-xs font-semibold rounded-lg p-2 text-white focus:outline-none focus:border-blue-500">
+              <option value="VSE_BOM">VSE BoM (Creation + VSE Review + Lum Upload + Lum Review)</option>
+              <option value="PDF_TO_LUM">Luminovo PDF to Excel (Prep + Prep Review + Lum Upload + Lum Review)</option>
+              <option value="DIRECT_LUM">Direct Excel Luminovo (Upload + Review)</option>
+            </select>
+          </div>
+
+          <div id="modalBomNameContainer">
+            <label id="modalBomNameLabel" class="block text-xs font-bold text-blue-400 mb-1 uppercase">VSE BoM Name</label>
+            <input id="inputBomName" type="text" placeholder="e.g. BOM_20063141-001_1" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-blue-500" />
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <label id="modalFilesSectionLabel" class="block text-xs font-bold text-slate-300 uppercase tracking-wider">VSE BoM Part Numbers / Files List</label>
+            <button type="button" onclick="addModalFileRow()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow transition flex items-center gap-1">
+              <span>+</span> Add Another File / Part
+            </button>
+          </div>
+
+          <div id="modalFilesList" class="space-y-3"></div>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-4 border-t border-slate-700">
+          <button type="button" onclick="closeModal()" class="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white">Cancel</button>
+          <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-xl text-xs font-bold shadow-lg">Save & Allocate All</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Email Preview Modal -->
+  <div id="emailPreviewModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="bg-slate-800 border border-indigo-500/50 rounded-2xl p-6 w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
+      <div class="flex items-center justify-between mb-3 border-b border-slate-700 pb-2">
+        <div class="flex items-center gap-2">
+          <span class="text-indigo-400 text-2xl">📧</span>
+          <h3 class="text-base font-bold text-white">Daily Dispatch Email Format</h3>
+        </div>
+        <button type="button" onclick="closeEmailPreviewModal()" class="text-slate-400 hover:text-white text-xs">✕ Close</button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto space-y-3 pr-1">
+        <div class="bg-slate-900 border border-slate-700 rounded-xl p-4 text-xs font-mono text-slate-200 leading-relaxed whitespace-pre-wrap select-all" id="emailFormattedText"></div>
+      </div>
+
+      <div class="flex justify-between items-center gap-3 pt-4 border-t border-slate-700 mt-2">
+        <button onclick="downloadEmailWordDoc()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow flex items-center gap-1.5">
+          <span>📄</span> Download as Word Document (.doc)
+        </button>
+        <button type="button" onclick="copyEmailText()" class="bg-purple-600 hover:bg-purple-500 text-white px-5 py-2 rounded-xl text-xs font-bold shadow flex items-center gap-1.5">
+          <span id="copyBtnIcon">📋</span> <span id="copyBtnLabel">Copy Email Text</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Complete Creation Modal -->
+  <div id="completeCreationModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="bg-slate-800 border border-blue-500/50 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="text-blue-400 text-2xl">📝</span>
+        <h3 class="text-base font-bold text-white">Complete Creation & Enter File Name</h3>
+      </div>
+      <p id="creationPromptInfo" class="text-xs text-slate-300 mb-4 bg-slate-900/80 p-2.5 rounded-lg border border-slate-700"></p>
+      
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Final Created Full File Name:</label>
+          <input id="inputCreatedFileName" type="text" placeholder="e.g. 0090-18546_REV_02_VSE_00_BOM" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-blue-500 font-mono" />
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 mt-4 pt-3 border-t border-slate-700">
+        <button type="button" onclick="closeCompleteCreationModal()" class="px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-white">Cancel</button>
+        <button type="button" onclick="submitCreationComplete()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow">Save & Send to Review ✔</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Email Handover Note Modal -->
+  <div id="shipmentNoteModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="bg-slate-800 border border-emerald-500/50 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="text-emerald-400 text-2xl">✉️</span>
+        <div>
+          <h3 class="text-base font-bold text-white">Add Handover Note to Email Report</h3>
+          <p class="text-[11px] text-slate-400">Leave remarks / details that should appear under Note in the dispatch email.</p>
+        </div>
+      </div>
+      <p id="shipmentNoteTargetInfo" class="text-xs text-slate-300 mb-4 bg-slate-900/80 p-2.5 rounded-lg border border-slate-700"></p>
+      
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Handover Note / Details:</label>
+          <textarea id="inputShipmentNote" rows="3" placeholder="e.g. Part format changed from rev 1 to rev 2, BOM verified..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"></textarea>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 mt-4 pt-3 border-t border-slate-700">
+        <button type="button" onclick="closeShipmentNoteModal()" class="px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-white">Cancel</button>
+        <button type="button" onclick="submitShipmentNote()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow">Save Handover Note</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rework Modal -->
+  <div id="reworkModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="bg-slate-800 border border-rose-500/50 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="text-rose-400 text-2xl">⚠️</span>
+        <h3 class="text-base font-bold text-white">Send Back for Rework</h3>
+      </div>
+      <p id="reworkTargetInfo" class="text-xs text-slate-300 mb-4 bg-slate-900/80 p-2.5 rounded-lg border border-slate-700"></p>
+      
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Mistake Details / Reviewer Note:</label>
+          <textarea id="reworkNote" rows="3" placeholder="Explain the mistake so the assignee can correct it..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-rose-500"></textarea>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 mt-4 pt-3 border-t border-slate-700">
+        <button type="button" onclick="closeReworkModal()" class="px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-white">Cancel</button>
+        <button type="button" onclick="submitRework()" class="bg-rose-600 hover:bg-rose-500 text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow">Send Back</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Minor Fix Modal -->
+  <div id="minorCorrectionModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="bg-slate-800 border border-indigo-500/50 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="text-indigo-400 text-2xl">✍️</span>
+        <div>
+          <h3 class="text-base font-bold text-white">Self-Correct & Notify Assignee</h3>
+          <p class="text-[11px] text-slate-400">Fix the issue directly and approve.</p>
+        </div>
+      </div>
+      <p id="minorTargetInfo" class="text-xs text-slate-300 mb-4 bg-slate-900/80 p-2.5 rounded-lg border border-slate-700"></p>
+      
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Correction Details (FYI Note):</label>
+          <textarea id="minorCorrectionNote" rows="3" placeholder="e.g. Corrected quantity/format updated by reviewer..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500"></textarea>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 mt-4 pt-3 border-t border-slate-700">
+        <button type="button" onclick="closeMinorModal()" class="px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-white">Cancel</button>
+        <button type="button" onclick="submitMinorCorrection()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow">Approve & Notify</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. TEAM MEMBERS & OFFICIAL TEAMS LOGIN EMAILS
+    // =========================================================================
+    const ALL_MEMBERS = ["Rohini", "Saritha", "Nageswari", "Sathya", "Banu", "Indhu", "Krishna"];
+
+    const MEMBER_EMAILS = {
+      "Rohini": "rohini@baavatech.com",
+      "Saritha": "saritha@baavatech.com",
+      "Nageswari": "nageswari@baavatech.com",
+      "Sathya": "sathyapriya@baavatech.com",
+      "Banu": "banumathi@baavatech.com",
+      "Indhu": "indhumathi@baavatech.com",
+      "Krishna": "ksk@baavatech.com"
+    };
+
+    // =========================================================================
+    // 2. LIVE CLOUD API CONFIGURATION (npoint API Endpoint)
+    // =========================================================================
+    const NPOINT_URL = "https://api.npoint.io/13f13b1a5c2825deb63a";
+
+    let currentDate = "";
+    let allocatedBy = "Rohini";
+    let shipmentBy = "Saritha";
+    let bomPackages = [];
+    let notifications = [];
+    let globalStore = {};
+    let isSaving = false;
+
+    let currentReworkContext = null;
+    let currentMinorContext = null;
+    let currentCreationContext = null;
+    let currentShipmentNoteContext = null;
+
+    function initHeaderDropdowns() {
+      const allocSelect = document.getElementById('headerAllocatedBy');
+      const shipSelect = document.getElementById('headerShipmentBy');
+
+      allocSelect.innerHTML = ALL_MEMBERS.map(m => `<option value="${m}" ${m === allocatedBy ? 'selected' : ''}>${m}</option>`).join('');
+      shipSelect.innerHTML = ALL_MEMBERS.map(m => `<option value="${m}" ${m === shipmentBy ? 'selected' : ''}>${m}</option>`).join('');
+    }
+
+    // Direct Teams 1-on-1 Deep Link Launcher
+    function notifyOnTeams(targetMember, messageText) {
+      const email = MEMBER_EMAILS[targetMember] || targetMember;
+      const cleanEmail = email.trim();
+      const encodedMsg = encodeURIComponent(messageText);
+      const teamsLink = `https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(cleanEmail)}&message=${encodedMsg}`;
+      
+      const link = document.createElement('a');
+      link.href = teamsLink;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function setInitialDate() {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      currentDate = `${yyyy}-${mm}-${dd}`;
+      document.getElementById('datePicker').value = currentDate;
+      document.getElementById('summaryDateLabel').innerText = currentDate;
+    }
+
+    // Cloud Data Fetching
+    async function fetchCloudData() {
+      if (isSaving) return;
+      try {
+        const res = await fetch(NPOINT_URL);
+        if (res.ok) {
+          const data = await res.json();
+          globalStore = data || {};
+          const dayData = globalStore[currentDate];
+          if (dayData) {
+            allocatedBy = dayData.roles?.allocatedBy || "Rohini";
+            shipmentBy = dayData.roles?.shipmentBy || "Saritha";
+            bomPackages = dayData.bomPackages || [];
+            notifications = dayData.notifications || [];
+          } else {
+            allocatedBy = "Rohini";
+            shipmentBy = "Saritha";
+            bomPackages = [];
+            notifications = [{ text: `Portal ready for ${currentDate}`, time: getTimeStr(), type: "info" }];
+          }
+          initHeaderDropdowns();
+          renderAll();
+        }
+      } catch (err) {
+        console.warn("Cloud sync read failed, running local cache", err);
+      }
+    }
+
+    // Cloud Data Saving
+    async function syncData() {
+      isSaving = true;
+      globalStore[currentDate] = {
+        roles: { allocatedBy, shipmentBy },
+        bomPackages: bomPackages,
+        notifications: notifications
+      };
+
+      try {
+        await fetch(NPOINT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(globalStore)
+        });
+      } catch (err) {
+        console.error("Cloud sync save error", err);
+      } finally {
+        isSaving = false;
+      }
+    }
+
+    function saveHeaderRoles() {
+      allocatedBy = document.getElementById('headerAllocatedBy').value;
+      shipmentBy = document.getElementById('headerShipmentBy').value;
+      syncData();
+      renderAll();
+    }
+
+    function onDateChange() {
+      const pickerVal = document.getElementById('datePicker').value;
+      if (pickerVal) {
+        currentDate = pickerVal;
+        document.getElementById('summaryDateLabel').innerText = currentDate;
+        fetchCloudData();
+      }
+    }
+
+    function getTimeStr() {
+      return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+    }
+
+    function computeDuration(startStr, endStr) {
+      const parseTime = (s) => {
+        const [time, modifier] = s.split(' ');
+        let [hours, minutes] = time.split(':').map(Number);
+        if (modifier === 'PM' && hours < 12) hours += 12;
+        if (modifier === 'AM' && hours === 12) hours = 0;
+        return hours * 60 + minutes;
+      };
+      try {
+        const diffMin = Math.abs(parseTime(endStr) - parseTime(startStr));
+        const h = Math.floor(diffMin / 60);
+        const m = diffMin % 60;
+        return `${h}h ${m}m`;
+      } catch (e) {
+        return "0h 30m";
+      }
+    }
+
+    function playBeep() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.2);
+      } catch(e){}
+    }
+
+    function addNotification(text, type) {
+      notifications.unshift({ text, time: getTimeStr(), type });
+      syncData();
+      renderNotifications();
+    }
+
+    function renderNotifications() {
+      const container = document.getElementById('notificationList');
+      if (notifications.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-500 italic p-2">No activity recorded for this date.</p>`;
+        return;
+      }
+      container.innerHTML = notifications.map(n => `
+        <div class="p-3 rounded-xl border text-xs ${
+          n.type === 'alert' ? 'bg-blue-950/40 border-blue-600/40 text-blue-200' :
+          n.type === 'minor' ? 'bg-indigo-950/50 border-indigo-500/50 text-indigo-200' :
+          n.type === 'rework' ? 'bg-rose-950/50 border-rose-500/50 text-rose-200' :
+          n.type === 'shipment' ? 'bg-emerald-950/50 border-emerald-500/50 text-emerald-200' :
+          n.type === 'success' ? 'bg-emerald-950/40 border-emerald-600/40 text-emerald-200' :
+          'bg-slate-900 border-slate-700 text-slate-300'
+        }">
+          <div class="flex justify-between items-start gap-2">
+            <p class="font-medium leading-relaxed">${n.text}</p>
+            <span class="text-[10px] text-slate-500 whitespace-nowrap">${n.time}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function isVseFullyCompleted(vse) {
+      if (vse.alreadyExistsInLuminovo) {
+        const nonLumStages = vse.stages.filter(st => !st.name.includes("Luminovo") && !st.name.includes("Lum"));
+        return nonLumStages.length === 0 || nonLumStages.every(st => st.status === 'COMPLETED');
+      }
+      return vse.stages[vse.stages.length - 1].status === 'COMPLETED';
+    }
+
+    function renderMetrics() {
+      let totalVse = 0;
+      let existsCount = 0;
+
+      bomPackages.forEach(pkg => {
+        pkg.vseList.forEach(v => {
+          totalVse++;
+          if (v.alreadyExistsInLuminovo) existsCount++;
+        });
+      });
+
+      document.getElementById('totalBomsCount').innerText = bomPackages.length;
+      document.getElementById('totalVseFilesCount').innerText = totalVse;
+      document.getElementById('existsLuminovoCount').innerText = existsCount;
+    }
+
+    function renderTeamSummary() {
+      const counts = {};
+      ALL_MEMBERS.forEach(m => {
+        counts[m] = { vseCreation: 0, vseReview: 0, pdfPrep: 0, prepReview: 0, lumUpload: 0, lumReview: 0, total: 0 };
+      });
+
+      bomPackages.forEach(pkg => {
+        pkg.vseList.forEach(vse => {
+          vse.stages.forEach((st) => {
+            if (st.status === 'COMPLETED' && counts[st.owner] && st.duration !== "N/A (Exists)") {
+              if (st.name === "VSE Creation") counts[st.owner].vseCreation++;
+              else if (st.name === "VSE Review") counts[st.owner].vseReview++;
+              else if (st.name === "PDF to Excel Prep") counts[st.owner].pdfPrep++;
+              else if (st.name === "Prep Review") counts[st.owner].prepReview++;
+              else if (st.name === "Luminovo Upload") counts[st.owner].lumUpload++;
+              else if (st.name === "Luminovo Review") counts[st.owner].lumReview++;
+              counts[st.owner].total++;
+            }
+          });
+        });
+      });
+
+      const tbody = document.getElementById('teamSummaryBody');
+      tbody.innerHTML = ALL_MEMBERS.map(m => `
+        <tr class="hover:bg-slate-900/40 transition">
+          <td class="py-2.5 px-3 font-semibold text-white">${m}</td>
+          <td class="py-2.5 px-3 text-center font-mono ${counts[m].vseCreation ? 'text-emerald-400 font-bold' : 'text-slate-600'}">${counts[m].vseCreation}</td>
+          <td class="py-2.5 px-3 text-center font-mono ${counts[m].vseReview ? 'text-emerald-400 font-bold' : 'text-slate-600'}">${counts[m].vseReview}</td>
+          <td class="py-2.5 px-3 text-center font-mono ${counts[m].pdfPrep ? 'text-emerald-400 font-bold' : 'text-slate-600'}">${counts[m].pdfPrep}</td>
+          <td class="py-2.5 px-3 text-center font-mono ${counts[m].prepReview ? 'text-emerald-400 font-bold' : 'text-slate-600'}">${counts[m].prepReview}</td>
+          <td class="py-2.5 px-3 text-center font-mono ${counts[m].lumUpload ? 'text-emerald-400 font-bold' : 'text-slate-600'}">${counts[m].lumUpload}</td>
+          <td class="py-2.5 px-3 text-center font-mono ${counts[m].lumReview ? 'text-emerald-400 font-bold' : 'text-slate-600'}">${counts[m].lumReview}</td>
+          <td class="py-2.5 px-3 text-center font-mono font-bold text-blue-400 bg-slate-900/30">${counts[m].total}</td>
+        </tr>
+      `).join('');
+    }
+
+    function toggleAlreadyExists(pkgId, vseId) {
+      const pkg = bomPackages.find(p => p.id === pkgId);
+      const vse = pkg.vseList.find(v => v.id === vseId);
+      vse.alreadyExistsInLuminovo = !vse.alreadyExistsInLuminovo;
+
+      vse.stages.forEach(st => {
+        if (st.name.includes("Luminovo") || st.name.includes("Lum")) {
+          if (vse.alreadyExistsInLuminovo) {
+            st.status = "COMPLETED";
+            st.duration = "N/A (Exists)";
+            st.endTime = getTimeStr();
+          } else {
+            st.status = "PENDING";
+            st.duration = null;
+            st.startTime = null;
+            st.endTime = null;
+          }
+        }
+      });
+
+      addNotification(`📌 Status Update: ${vse.fileName || vse.partNumber} marked as ${vse.alreadyExistsInLuminovo ? 'EXISTS IN LUMINOVO' : 'NORMAL FILE'}`, "info");
+      syncData();
+      renderAll();
+    }
+
+    function openShipmentNoteModal(pkgId, vseId) {
+      const pkg = bomPackages.find(p => p.id === pkgId);
+      const vse = pkg.vseList.find(v => v.id === vseId);
+      currentShipmentNoteContext = { pkgId, vseId, displayName: vse.fileName || vse.partNumber };
+
+      document.getElementById('shipmentNoteTargetInfo').innerHTML = `
+        Adding Email Report Note for file: <b>${vse.fileName || vse.partNumber}</b><br>
+        Email Dispatch In-charge: <b>${shipmentBy}</b>
+      `;
+      document.getElementById('inputShipmentNote').value = "";
+      document.getElementById('shipmentNoteModal').classList.remove('hidden');
+    }
+
+    function closeShipmentNoteModal() {
+      document.getElementById('shipmentNoteModal').classList.add('hidden');
+      currentShipmentNoteContext = null;
+    }
+
+    function submitShipmentNote() {
+      if (!currentShipmentNoteContext) return;
+      const note = document.getElementById('inputShipmentNote').value.trim();
+      if (!note) return;
+
+      const { pkgId, vseId, displayName } = currentShipmentNoteContext;
+      const pkg = bomPackages.find(p => p.id === pkgId);
+      const vse = pkg.vseList.find(v => v.id === vseId);
+
+      if (!vse.emailHandoverNotes) vse.emailHandoverNotes = [];
+      vse.emailHandoverNotes.push({
+        from: shipmentBy,
+        text: note,
+        time: getTimeStr()
+      });
+
+      addNotification(`✉️ Note to Email Report: "${note}" added for ${displayName}`, "info");
+      closeShipmentNoteModal();
+      syncData();
+      renderAll();
+    }
+
+    function generateEmailText() {
+      let createdVseBoms = [];
+      let alreadyExistsFiles = [];
+      let luminovoFiles = [];
+      let notes = [];
+
+      bomPackages.forEach(pkg => {
+        if (pkg.workflowMode === 'VSE_BOM' && pkg.bomName) {
+          if (!createdVseBoms.includes(pkg.bomName)) createdVseBoms.push(pkg.bomName);
+        }
+
+        pkg.vseList.forEach(vse => {
+          const fileName = vse.fileName || vse.partNumber;
+          if (vse.alreadyExistsInLuminovo) {
+            alreadyExistsFiles.push(fileName);
+          } else if (pkg.workflowMode === 'PDF_TO_LUM' || pkg.workflowMode === 'DIRECT_LUM') {
+            luminovoFiles.push(fileName);
+          }
+
+          if (vse.emailHandoverNotes && vse.emailHandoverNotes.length > 0) {
+            vse.emailHandoverNotes.forEach(n => {
+              notes.push(`${fileName}: ${n.text}`);
+            });
+          }
+        });
+      });
+
+      let emailText = `Hi Rohini,\n\n`;
+
+      if (createdVseBoms.length > 0) {
+        emailText += `The following VSE BoM has been created and the Files has been Uploaded to Luminovo and "To VSE" Folder:\n\n`;
+        createdVseBoms.forEach(bom => {
+          emailText += `    ${bom}\n`;
+        });
+        emailText += `\n`;
+      }
+
+      if (alreadyExistsFiles.length > 0) {
+        emailText += `Files Already Exists in Luminovo:\n\n`;
+        alreadyExistsFiles.forEach(file => {
+          emailText += `    ${file}\n`;
+        });
+        emailText += `\n`;
+      }
+
+      if (luminovoFiles.length > 0) {
+        emailText += `Luminovo Files:\n\n`;
+        luminovoFiles.forEach(file => {
+          emailText += `    ${file}\n`;
+        });
+        emailText += `\n`;
+      }
+
+      if (notes.length > 0) {
+        emailText += `Note:\n`;
+        notes.forEach(note => {
+          emailText += `    • ${note}\n`;
+        });
+        emailText += `\n`;
+      } else {
+        emailText += `Note:\n    • All allocated files have been processed successfully.\n\n`;
+      }
+
+      emailText += `Thanks & Regards,\n${shipmentBy}\nBAVA TECH`;
+      return emailText;
+    }
+
+    function downloadEmailWordDoc() {
+      if (bomPackages.length === 0) {
+        alert("No data available to generate report for this date!");
+        return;
+      }
+
+      let createdVseBoms = [];
+      let alreadyExistsFiles = [];
+      let luminovoFiles = [];
+      let notes = [];
+
+      bomPackages.forEach(pkg => {
+        if (pkg.workflowMode === 'VSE_BOM' && pkg.bomName) {
+          if (!createdVseBoms.includes(pkg.bomName)) createdVseBoms.push(pkg.bomName);
+        }
+
+        pkg.vseList.forEach(vse => {
+          const fileName = vse.fileName || vse.partNumber;
+          if (vse.alreadyExistsInLuminovo) {
+            alreadyExistsFiles.push(fileName);
+          } else if (pkg.workflowMode === 'PDF_TO_LUM' || pkg.workflowMode === 'DIRECT_LUM') {
+            luminovoFiles.push(fileName);
+          }
+
+          if (vse.emailHandoverNotes && vse.emailHandoverNotes.length > 0) {
+            vse.emailHandoverNotes.forEach(n => {
+              notes.push(`${fileName}: ${n.text}`);
+            });
+          }
+        });
+      });
+
+      let wordHtml = `
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+        <head>
+          <meta charset="utf-8">
+          <title>Daily Dispatch Report - ${currentDate}</title>
+          <style>
+            body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; line-height: 1.5; color: #111827; }
+            p { margin: 0 0 10pt 0; }
+            .header-block { margin-bottom: 15pt; }
+            .section-title { font-weight: bold; margin-top: 15pt; margin-bottom: 6pt; }
+            .item-list { margin-left: 25pt; margin-bottom: 12pt; }
+            .note-list { margin-left: 15pt; margin-bottom: 12pt; }
+          </style>
+        </head>
+        <body>
+          <div class="header-block">
+            <p><strong>To:</strong> Rohini R</p>
+            <p><strong>Cc:</strong> Krishna KS; Nageswari A; Banumathi K; Rohini; Saritha T; Sathyapriya S; Indhu</p>
+            <p><strong>Date:</strong> ${currentDate}</p>
+          </div>
+
+          <p>Hi Rohini,</p>
+
+          ${createdVseBoms.length > 0 ? `
+            <p class="section-title">The following VSE BoM has been created and the Files has been Uploaded to Luminovo and "To VSE" Folder:</p>
+            <div class="item-list">
+              ${createdVseBoms.map(bom => `<p style="margin:2pt 0; font-family:Consolas, monospace;">${bom}</p>`).join('')}
+            </div>
+          ` : ''}
+
+          ${alreadyExistsFiles.length > 0 ? `
+            <p class="section-title">Files Already Exists in Luminovo:</p>
+            <div class="item-list">
+              ${alreadyExistsFiles.map(file => `<p style="margin:2pt 0; font-family:Consolas, monospace;">${file}</p>`).join('')}
+            </div>
+          ` : ''}
+
+          ${luminovoFiles.length > 0 ? `
+            <p class="section-title">Luminovo Files:</p>
+            <div class="item-list">
+              ${luminovoFiles.map(file => `<p style="margin:2pt 0; font-family:Consolas, monospace;">${file}</p>`).join('')}
+            </div>
+          ` : ''}
+
+          <p class="section-title">Note:</p>
+          <div class="note-list">
+            ${notes.length > 0 ? notes.map(n => `<p style="margin:2pt 0;">• ${n}</p>`).join('') : '<p style="margin:2pt 0;">• All allocated files have been processed successfully.</p>'}
+          </div>
+
+          <p style="margin-top: 20pt;">Thanks & Regards,<br><strong>${shipmentBy}</strong><br>BAVA TECH</p>
+        </body>
+        </html>
+      `;
+
+      const blob = new Blob(['\ufeff', wordHtml], { type: 'application/msword' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Email_Dispatch_Report_${currentDate}.doc`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    function openEmailPreviewModal() {
+      const emailContent = generateEmailText();
+      document.getElementById('emailFormattedText').innerText = emailContent;
+      document.getElementById('copyBtnLabel').innerText = "Copy Email Text";
+      document.getElementById('copyBtnIcon').innerText = "📋";
+      document.getElementById('emailPreviewModal').classList.remove('hidden');
+    }
+
+    function closeEmailPreviewModal() {
+      document.getElementById('emailPreviewModal').classList.add('hidden');
+    }
+
+    function copyEmailText() {
+      const emailContent = generateEmailText();
+      navigator.clipboard.writeText(emailContent).then(() => {
+        document.getElementById('copyBtnLabel').innerText = "Copied to Clipboard! ✔";
+        document.getElementById('copyBtnIcon').innerText = "✅";
+        setTimeout(() => {
+          document.getElementById('copyBtnLabel').innerText = "Copy Email Text";
+          document.getElementById('copyBtnIcon').innerText = "📋";
+        }, 2500);
+      });
+    }
+
+    function handleOwnerChange(pkgId, vseId, stageIdx, newOwner) {
+      const pkg = bomPackages.find(p => p.id === pkgId);
+      const vse = pkg.vseList.find(v => v.id === vseId);
+      vse.stages[stageIdx].owner = newOwner;
+      addNotification(`[${vse.fileName || vse.partNumber}] Stage ${stageIdx + 1} (${vse.stages[stageIdx].name}) assigned to ${newOwner}`, "info");
+      syncData();
+      renderAll();
+    }
+
+    function handleStart(pkgId, vseId, stageIdx) {
+      const timeNow = getTimeStr();
+      const pkg = bomPackages.find(p => p.id === pkgId);
+      const vse = pkg.vseList.find(v => v.id === vseId);
+      vse.stages[stageIdx].startTime = timeNow;
+      vse.stages[stageIdx].status = "IN_PROGRESS";
+      
+      const displayName = vse.fileName || `Part: ${vse.partNumber}`;
+      const isRework = vse.stages[stageIdx].reworkNote !== null;
+      if (isRework) {
+        addNotification(`🔄 ${vse.stages[stageIdx].owner} started fixing rework on ${displayName}`, "info");
+      } else {
+        addNotification(`Stage '${vse.stages[stageIdx].name}' started by ${vse.stages[stageIdx].owner} on ${displayName}`, "info");
+      }
+      syncData();
+      renderAll();
+    }
+
+    function handleCompleteClick(pkgId, vseId, stageIdx) {
+      const pkg = bomPackages.find(p => p.id === pkgId);
+      const vse = pkg.vseList.find(v => v.id === vseId);
+      
+      if (stageIdx === 0 && (!vse.fileName || vse.fileName === vse.partNumber)) {
+        currentCreationContext = { pkgId, vseId, stageIdx };
+        document.getElementById('creationPromptInfo').innerHTML = `
+          Part Number: <b>${vse.partNumber}</b><br>
+          Assignee: <b>${vse.stages[0].owner}</b>
+        `;
+        document.getElementById('inputCreatedFileName').value = vse.fileName || `${vse.partNumber}_REV_01_VSE_00_BOM`;
+        document.getElementById('completeCreationModal').classList.remove('hidden');
+        return;
+      }
+
+      executeComplete(pkgId, vseId, stageIdx);
+    }
+
+    function closeCompleteCreationModal() {
+      document.getElementById('completeCreationModal').classList.add('hidden');
+      currentCreationContext = null;
+    }
+
+    function submitCreationComplete() {
+      if (!currentCreationContext) return;
+      const { pkgId, vseId, stageIdx } = currentCreationContext;
+      const enteredName = document.getElementById('inputCreatedFileName').value.trim();
+      
+      const pkg = bomPackages.find(p => p.id === pkgId);
+      const vse = pkg.vseList.find(v => v.id === vseId);
+      
+      if (enteredName) {
+        vse.fileName = enteredName;
+      }
+
+      closeCompleteCreationModal();
+      executeComplete(pkgId, vseId, stageIdx);
+    }
+
+    // Teams Handover Trigger
+    function executeComplete(pkgId, vseId, stageIdx) {
+      const timeNow = getTimeStr();
+      playBeep();
+      const pkg = bomPackages.find(p => p.id === pkgId);
+      const vse = pkg.vseList.find(v => v.id === vseId);
+      const st = vse.stages[stageIdx];
+      st.endTime = timeNow;
+      st.duration = computeDuration(st.startTime || timeNow, timeNow);
+      st.status = "COMPLETED";
+      st.reworkNote = null;
+
+      const displayName = vse.fileName || `Part: ${vse.partNumber}`;
+
+      if (vse.alreadyExistsInLuminovo && (stageIdx === 1 || (stageIdx === 0 && vse.stages.length === 2))) {
+        addNotification(`🎉 File Completion: ${displayName} is COMPLETED (Exists in Luminovo). Ready for ${shipmentBy} to Email!`, "success");
+        const teamsMsg = `Hi ${shipmentBy},\n\nFile "${displayName}" is COMPLETED (Exists in Luminovo). Ready for Daily Dispatch Email.\n\nThanks,\n${st.owner}`;
+        notifyOnTeams(shipmentBy, teamsMsg);
+      } else if (stageIdx < vse.stages.length - 1) {
+        const nextStage = vse.stages[stageIdx + 1];
+        const nextOwner = nextStage.owner;
+
+        addNotification(`🔔 Alert: ${st.owner} finished Stage ${stageIdx + 1} (${st.name}) on ${displayName}. Handed over to ${nextOwner}!`, "alert");
+
+        const teamsMsg = `Hi ${nextOwner},\n\nI have completed ${st.name} for file "${displayName}".\nIt is now assigned to you for Stage ${stageIdx + 2} (${nextStage.name}) in the Work Allocation Portal.\n\nThanks,\n${st.owner}`;
+        notifyOnTeams(nextOwner, teamsMsg);
+      } else {
+        addNotification(`🎉 File Completion: ${displayName} is fully COMPLETED. Ready for ${shipmentBy} to Email!`, "success");
+        const teamsMsg = `Hi ${shipmentBy},\n\nFile "${displayName}" has passed all reviews and is COMPLETED. Ready for Daily Dispatch Email.\n\nThanks,\n${st.owner}`;
+        notifyOnTeams(shipmentBy, teamsMsg);
+      }
+      syncData();
+      renderAll();
+    }
+
+    function handleAcknowledgeCorrection(pkgId, vseId, stageIdx) {
+      const pkg = bomPackages.find(p => p.id === pkgId);
+      const vse = pkg.vseList.find(v => v.id === vseId);
+      const st = vse.stages[stageIdx];
+      const creatorName = st.owner;
+      
+      st.correctionNote = null;
+      addNotification(`👍 ${creatorName} acknowledged the correction note on ${vse.fileName || vse.partNumber} (${st.name})`, "info");
+      syncData();
+      renderAll();
+    }
+
+    function openReworkModal(pkgId, vseId, stageIdx) {
+      const pkg = bomPackages.find(p => p.id === pkgId);
+      const vse = pkg.vseList.find(v => v.id === vseId);
+      const prevStage = vse.stages[stageIdx - 1];
+      const reviewer = vse.stages[stageIdx].owner;
+      const displayName = vse.fileName || `Part: ${vse.partNumber}`;
+
+      currentReworkContext = { pkgId, vseId, stageIdx, targetOwner: prevStage.owner, reviewer, displayName };
+
+      document.getElementById('reworkTargetInfo').innerHTML = `
+        Sending rework to <b>${prevStage.owner}</b> for <b>${displayName}</b> (Reverting to ${prevStage.name})
+      `;
+      document.getElementById('reworkNote').value = "";
+      document.getElementById('reworkModal').classList.remove('hidden');
+    }
+
+    function closeReworkModal() {
+      document.getElementById('reworkModal').classList.add('hidden');
+      currentReworkContext = null;
+    }
+
+    function submitRework() {
+      if (!currentReworkContext) return;
+      const note = document.getElementById('reworkNote').value.trim() || "Changes requested during review.";
+      const { pkgId, vseId, stageIdx, targetOwner, reviewer, displayName } = currentReworkContext;
+
+      const pkg = bomPackages.find(p => p.id === pkgId);
+      const vse = pkg.vseList.find(v => v.id === vseId);
+
+      vse.stages[stageIdx - 1].status = "REWORK_REQUIRED";
+      vse.stages[stageIdx - 1].reworkNote = note;
+      vse.stages[stageIdx - 1].endTime = null;
+
+      vse.stages[stageIdx].status = "PENDING";
+      vse.stages[stageIdx].startTime = null;
+
+      addNotification(`⚠️ Full Rework Requested: ${reviewer} sent back ${displayName} to ${targetOwner}! Note: "${note}"`, "rework");
+      closeReworkModal();
+
+      const teamsMsg = `Hi ${targetOwner},\n\nRework has been requested for "${displayName}".\nReviewer Reason: ${note}\n\nPlease check the portal.`;
+      notifyOnTeams(targetOwner, teamsMsg);
+
+      syncData();
+      renderAll();
+    }
+
+    function openMinorModal(pkgId, vseId, stageIdx) {
+      const pkg = bomPackages.find(p => p.id === pkgId);
+      const vse = pkg.vseList.find(v => v.id === vseId);
+      const prevStage = vse.stages[stageIdx - 1];
+      const reviewer = vse.stages[stageIdx].owner;
+      const displayName = vse.fileName || `Part: ${vse.partNumber}`;
+
+      currentMinorContext = { pkgId, vseId, stageIdx, creator: prevStage.owner, reviewer, displayName };
+
+      document.getElementById('minorTargetInfo').innerHTML = `
+        You are approving this stage & sending an informational note to <b>${prevStage.owner}</b> for <b>${displayName}</b>.
+      `;
+      document.getElementById('minorCorrectionNote').value = "";
+      document.getElementById('minorCorrectionModal').classList.remove('hidden');
+    }
+
+    function closeMinorModal() {
+      document.getElementById('minorCorrectionModal').classList.add('hidden');
+      currentMinorContext = null;
+    }
+
+    function submitMinorCorrection() {
+      if (!currentMinorContext) return;
+      const note = document.getElementById('minorCorrectionNote').value.trim() || "Minor correction handled by reviewer.";
+      const { pkgId, vseId, stageIdx, creator, reviewer, displayName } = currentMinorContext;
+
+      const pkg = bomPackages.find(p => p.id === pkgId);
+      const vse = pkg.vseList.find(v => v.id === vseId);
+
+      vse.stages[stageIdx - 1].correctionNote = {
+        from: reviewer,
+        text: note,
+        time: getTimeStr()
+      };
+
+      closeMinorModal();
+      executeComplete(pkgId, vseId, stageIdx);
+      addNotification(`✍️ Reviewer Note: ${reviewer} updated ${displayName} & notified ${creator}: "${note}"`, "minor");
+    }
+
+    function renderCards() {
+      const container = document.getElementById('cardsContainer');
+      if (bomPackages.length === 0) {
+        container.innerHTML = `
+          <div class="bg-slate-800 border border-slate-700/60 rounded-2xl p-8 text-center text-slate-400">
+            <p class="text-sm">No tasks allocated for this date.</p>
+            <p class="text-xs mt-1 text-slate-500">Click the "+ New Allocation" button above to assign tasks.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = bomPackages.map(pkg => {
+        const allCompleted = pkg.vseList.every(v => isVseFullyCompleted(v));
+        const doneCount = pkg.vseList.filter(v => isVseFullyCompleted(v)).length;
+        const isVseMode = pkg.workflowMode === 'VSE_BOM';
+
+        let vseFilesHtml = pkg.vseList.map((vse, vIdx) => {
+          const isFileDone = isVseFullyCompleted(vse);
+
+          let stagesHtml = vse.stages.map((st, idx) => {
+            const isLumStage = st.name.includes("Luminovo") || st.name.includes("Lum");
+            const isSkippedByExist = vse.alreadyExistsInLuminovo && isLumStage;
+            const isDone = st.status === "COMPLETED";
+            const isRunning = st.status === "IN_PROGRESS";
+            const isRework = st.status === "REWORK_REQUIRED";
+            const isReviewStage = st.name.includes("Review");
+            const canStart = idx === 0 || vse.stages[idx - 1].status === "COMPLETED";
+            const hasCorrectionNote = !!st.correctionNote;
+
+            let buttonHtml = '';
+            if (isSkippedByExist) {
+              buttonHtml = `
+                <div class="text-center py-1 bg-amber-500/10 border border-amber-500/30 rounded text-[10px] text-amber-300 font-bold">
+                  ⏩ Skipped (Exists)
+                </div>
+              `;
+            } else if (isRework) {
+              buttonHtml = `
+                <button onclick="handleStart('${pkg.id}', '${vse.id}', ${idx})" 
+                  class="w-full py-1 rounded font-bold text-[10px] bg-rose-600 hover:bg-rose-500 text-white transition shadow animate-bounce">
+                  Fix Rework ↺
+                </button>
+              `;
+            } else if (!isDone && !isRunning) {
+              buttonHtml = `
+                <button onclick="handleStart('${pkg.id}', '${vse.id}', ${idx})" ${!canStart ? 'disabled' : ''} 
+                  class="w-full py-1 rounded font-semibold text-[11px] transition ${
+                    canStart ? 'bg-slate-700 hover:bg-blue-600 text-white cursor-pointer' : 'bg-slate-800/40 text-slate-600 cursor-not-allowed'
+                  }">
+                  Start
+                </button>
+              `;
+            } else if (isRunning) {
+              if (isReviewStage) {
+                buttonHtml = `
+                  <div class="flex flex-col gap-1 mt-1">
+                    <button onclick="handleCompleteClick('${pkg.id}', '${vse.id}', ${idx})" 
+                      class="w-full py-1 rounded font-bold text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white transition">
+                      Approve ✔
+                    </button>
+                    <div class="flex gap-1">
+                      <button onclick="openMinorModal('${pkg.id}', '${vse.id}', ${idx})" 
+                        title="Reviewer self-fixes and leaves note to creator"
+                        class="flex-1 py-1 rounded font-bold text-[9px] bg-indigo-600 hover:bg-indigo-500 text-white transition">
+                        Fix & Notify ✍️
+                      </button>
+                      <button onclick="openReworkModal('${pkg.id}', '${vse.id}', ${idx})" 
+                        title="Send back to previous assignee"
+                        class="flex-1 py-1 rounded font-bold text-[9px] bg-rose-600 hover:bg-rose-500 text-white transition">
+                        Rework ↺
+                      </button>
+                    </div>
+                  </div>
+                `;
+              } else {
+                buttonHtml = `
+                  <button onclick="handleCompleteClick('${pkg.id}', '${vse.id}', ${idx})" 
+                    class="w-full py-1 rounded font-bold text-[11px] bg-emerald-600 hover:bg-emerald-500 text-white transition shadow cursor-pointer animate-pulse">
+                    ${idx === 0 && (!vse.fileName || vse.fileName === vse.partNumber) ? 'Complete & Name File 📝' : 'Complete ✔'}
+                  </button>
+                `;
+              }
+            }
+
+            const ownerOptions = ALL_MEMBERS.map(m => `
+              <option value="${m}" ${m === st.owner ? 'selected' : ''}>${m}</option>
+            `).join('');
+
+            return `
+              <div class="p-2.5 rounded-xl border text-xs flex flex-col justify-between ${
+                isSkippedByExist ? 'bg-slate-900/40 border-slate-800 text-slate-500 opacity-60' :
+                isDone ? 'bg-emerald-950/20 border-emerald-600/40 text-emerald-200' :
+                isRunning ? 'bg-blue-950/40 border-blue-500 text-blue-200 ring-1 ring-blue-500' :
+                isRework ? 'bg-rose-950/40 border-rose-500 text-rose-200 ring-1 ring-rose-500' :
+                'bg-slate-900/80 border-slate-700/60 text-slate-400'
+              }">
+                <div>
+                  <div class="flex justify-between items-center mb-1">
+                    <span class="font-bold text-[10px] uppercase ${isRework ? 'text-rose-400' : 'text-slate-400'}">
+                      S${idx + 1}: ${st.name.replace('Luminovo', 'Lum.')}
+                    </span>
+                    ${isSkippedByExist ? '<span class="text-amber-400 font-bold text-[10px]">⏩</span>' : isDone ? '<span class="text-emerald-400 font-bold text-[10px]">✔</span>' : ''}
+                    ${isRunning ? '<span class="text-blue-400 font-bold text-[10px]">●</span>' : ''}
+                    ${isRework ? '<span class="text-rose-400 font-bold text-[10px]">⚠️ REWORK</span>' : ''}
+                  </div>
+
+                  <div class="flex items-center gap-1 text-[11px] mb-1">
+                    ${isSkippedByExist ? `<span class="text-slate-500 italic">Not Required</span>` : isDone || isRunning || isRework ? `<span class="text-white font-medium">${st.owner}</span>` : `
+                      <select onchange="handleOwnerChange('${pkg.id}', '${vse.id}', ${idx}, this.value)" class="bg-slate-800 border border-slate-700 text-slate-200 text-[11px] rounded px-1 py-0.5 focus:outline-none">
+                        ${ownerOptions}
+                      </select>
+                    `}
+                  </div>
+
+                  ${st.reworkNote ? `
+                    <div class="my-1 p-1 bg-rose-500/10 border border-rose-500/30 rounded text-[9px] text-rose-300">
+                      <b>Rework Reason:</b> ${st.reworkNote}
+                    </div>
+                  ` : ''}
+
+                  ${hasCorrectionNote ? `
+                    <div class="my-1.5 p-1.5 bg-indigo-950/80 border border-indigo-500/60 rounded-lg text-[10px] text-indigo-200 shadow-md">
+                      <div class="flex items-center justify-between font-bold text-indigo-300 text-[9px] mb-0.5">
+                        <span>📝 Correction by ${st.correctionNote.from}:</span>
+                        <span class="text-[8px] text-indigo-400">${st.correctionNote.time}</span>
+                      </div>
+                      <p class="italic text-[10px] text-slate-200 mb-1.5">"${st.correctionNote.text}"</p>
+                      <button onclick="handleAcknowledgeCorrection('${pkg.id}', '${vse.id}', ${idx})" 
+                        class="w-full py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[9px] font-bold transition flex items-center justify-center gap-1">
+                        <span>✔</span> Acknowledge
+                      </button>
+                    </div>
+                  ` : ''}
+
+                  ${st.startTime && !isSkippedByExist ? `
+                    <div class="mt-1 pt-1 border-t border-slate-700/40 text-[10px] space-y-0.5">
+                      <p class="text-slate-400">${st.startTime} ${st.endTime ? '→ ' + st.endTime : ''}</p>
+                      ${st.duration ? `<p class="text-amber-300 font-bold">${st.duration}</p>` : ''}
+                    </div>
+                  ` : ''}
+                </div>
+                <div class="mt-2">${buttonHtml}</div>
+              </div>
+            `;
+          }).join('');
+
+          const typeBadges = {
+            'VSE_BOM': '<span class="text-[9px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded font-bold">VSE BoM</span>',
+            'PDF_TO_LUM': '<span class="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded font-bold">PDF to Lum</span>',
+            'DIRECT_LUM': '<span class="text-[9px] bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded font-bold">Direct Excel Lum</span>'
+          };
+
+          return `
+            <div class="p-3.5 bg-slate-900/60 border ${isFileDone ? 'border-emerald-600/40 bg-emerald-950/10' : 'border-slate-700/80'} rounded-xl space-y-2">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-xs font-bold text-slate-400">#${vIdx + 1}</span>
+                  ${vse.partNumber ? `<span class="bg-slate-800 text-amber-300 border border-slate-700 px-2 py-0.5 rounded font-mono text-xs font-bold">Part: ${vse.partNumber}</span>` : ''}
+                  <span class="font-mono font-semibold text-xs text-blue-300">${vse.fileName ? vse.fileName : '<span class="text-slate-500 italic">File Name Pending Creation...</span>'}</span>
+                  ${typeBadges[pkg.workflowMode] || ''}
+                  ${vse.alreadyExistsInLuminovo ? '<span class="text-[9px] bg-amber-500 text-slate-950 px-2 py-0.5 rounded-full font-bold">ALREADY EXISTS IN LUMINOVO</span>' : ''}
+                </div>
+                <div class="flex items-center gap-2">
+                  <button onclick="toggleAlreadyExists('${pkg.id}', '${vse.id}')" class="text-[10px] px-2 py-1 rounded font-bold border transition ${
+                    vse.alreadyExistsInLuminovo ? 'bg-amber-500/20 text-amber-300 border-amber-500/50' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
+                  }">
+                    ${vse.alreadyExistsInLuminovo ? '⚠️ Exists in Luminovo' : 'Mark Already Exists'}
+                  </button>
+                  <button onclick="openShipmentNoteModal('${pkg.id}', '${vse.id}')" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-slate-700 px-2.5 py-1 rounded-lg transition font-medium flex items-center gap-1">
+                    <span>✉️</span> Note to Email Report
+                  </button>
+                  ${isFileDone ? `
+                    <span class="text-[10px] font-bold bg-emerald-500 text-slate-950 px-2 py-0.5 rounded-full">✔ READY FOR EMAIL</span>
+                  ` : `
+                    <span class="text-[10px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">IN PROGRESS</span>
+                  `}
+                </div>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-${vse.stages.length} gap-2">
+                ${stagesHtml}
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <div class="rounded-2xl p-5 border transition shadow-xl ${
+            allCompleted ? 'bg-emerald-950/30 border-emerald-500' : 'bg-slate-800 border-slate-700'
+          }">
+            <div class="flex flex-wrap items-center justify-between pb-3 border-b border-slate-700 gap-2">
+              <div>
+                ${isVseMode ? `
+                  <span class="text-[10px] uppercase tracking-wider font-bold text-blue-400">VSE BoM Name</span>
+                  <h3 class="font-black text-lg text-white">${pkg.bomName}</h3>
+                ` : `
+                  <span class="text-[10px] uppercase tracking-wider font-bold text-amber-400">${pkg.workflowMode === 'PDF_TO_LUM' ? 'Luminovo (PDF to Excel)' : 'Direct Excel Luminovo'}</span>
+                  <h3 class="font-black text-lg text-white">${pkg.vseList.length} Files Allocation</h3>
+                `}
+                <p class="text-xs text-slate-400">${isVseMode ? 'VSE BoM Files Progress' : 'Files Progress'}: <span class="text-white font-bold">${doneCount} of ${pkg.vseList.length} Completed</span></p>
+              </div>
+
+              ${allCompleted ? `
+                <div class="bg-emerald-500 text-slate-950 font-black text-xs px-3.5 py-1.5 rounded-full uppercase tracking-wider shadow-lg shadow-emerald-500/30">
+                  ✔ ALL ${pkg.vseList.length} ${isVseMode ? 'VSE BOM ' : ''}FILES COMPLETED
+                </div>
+              ` : `
+                <div class="bg-blue-600/20 text-blue-300 border border-blue-500/30 font-bold text-xs px-3 py-1 rounded-full uppercase">
+                  ⚡ ${pkg.vseList.length} ${isVseMode ? 'VSE BOM ' : ''}FILES ALLOCATED
+                </div>
+              `}
+            </div>
+
+            <div class="mt-4 space-y-3">
+              ${vseFilesHtml}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderAll() {
+      renderCards();
+      renderNotifications();
+      renderMetrics();
+      renderTeamSummary();
+    }
+
+    let modalFileRowCount = 0;
+
+    function renderModalFilesList() {
+      const mode = document.getElementById('modalGlobalType').value;
+      const bomContainer = document.getElementById('modalBomNameContainer');
+      const bomInput = document.getElementById('inputBomName');
+      const filesLabel = document.getElementById('modalFilesSectionLabel');
+
+      if (mode === 'VSE_BOM') {
+        bomContainer.style.display = "block";
+        bomInput.required = true;
+        filesLabel.innerText = "VSE BoM Part Numbers / Files List";
+      } else if (mode === 'PDF_TO_LUM') {
+        bomContainer.style.display = "none";
+        bomInput.required = false;
+        bomInput.value = "";
+        filesLabel.innerText = "PDF Files List";
+      } else {
+        bomContainer.style.display = "none";
+        bomInput.required = false;
+        bomInput.value = "";
+        filesLabel.innerText = "Excel Files List";
+      }
+
+      const rows = document.querySelectorAll('#modalFilesList > div');
+      rows.forEach(row => {
+        const id = row.id.split('-')[2];
+        updateRowLabels(id, mode);
+      });
+    }
+
+    function updateRowLabels(id, mode) {
+      const fileLabel = document.getElementById(`modalFileLabel_${id}`);
+      const fileInput = document.querySelector(`#modal-row-${id} input[name="vseFileName"]`);
+      const stage1Label = document.getElementById(`modalStage1Label_${id}`);
+      const stage2Label = document.getElementById(`modalStage2Label_${id}`);
+      const stage2Container = document.getElementById(`modalStage2Container_${id}`);
+      const stage3Container = document.getElementById(`modalStage3Container_${id}`);
+      const stage4Container = document.getElementById(`modalStage4Container_${id}`);
+
+      if (!fileLabel) return;
+
+      if (mode === 'VSE_BOM') {
+        fileLabel.innerText = "Part Number (or Initial File Name)";
+        fileInput.placeholder = "e.g. 0090-18546";
+        stage1Label.innerText = "1. VSE Creation";
+        stage2Label.innerText = "2. VSE Review";
+        stage2Container.style.display = "block";
+        stage3Container.style.display = "block";
+        stage4Container.style.display = "block";
+      } else if (mode === 'PDF_TO_LUM') {
+        fileLabel.innerText = "PDF File Name / Part";
+        fileInput.placeholder = "e.g. 0090-18546_Schematic.pdf";
+        stage1Label.innerText = "1. PDF Prep";
+        stage2Label.innerText = "2. Prep Review";
+        stage2Container.style.display = "block";
+        stage3Container.style.display = "block";
+        stage4Container.style.display = "block";
+      } else if (mode === 'DIRECT_LUM') {
+        fileLabel.innerText = "Excel File Name / Part";
+        fileInput.placeholder = "e.g. 0090-18546_BOM.xlsx";
+        stage1Label.innerText = "1. Lum. Upload Assignee";
+        stage2Container.style.display = "none";
+        stage3Container.style.display = "none";
+        stage4Container.style.display = "none";
+      }
+    }
+
+    function addModalFileRow(defaultPart = "", defaultAssignee = "Nageswari", defaultReviewer = "Rohini", defaultLumUpload = "Sathya", defaultLumReview = "Indhu") {
+      modalFileRowCount++;
+      const id = modalFileRowCount;
+      const container = document.getElementById('modalFilesList');
+      const mode = document.getElementById('modalGlobalType') ? document.getElementById('modalGlobalType').value : 'VSE_BOM';
+
+      const s1Options = ALL_MEMBERS.map(m => `<option value="${m}" ${m === defaultAssignee ? 'selected' : ''}>${m}</option>`).join('');
+      const s2Options = ALL_MEMBERS.map(m => `<option value="${m}" ${m === defaultReviewer ? 'selected' : ''}>${m}</option>`).join('');
+      const s3Options = ALL_MEMBERS.map(m => `<option value="${m}" ${m === defaultLumUpload ? 'selected' : ''}>${m}</option>`).join('');
+      const s4Options = ALL_MEMBERS.map(m => `<option value="${m}" ${m === defaultLumReview ? 'selected' : ''}>${m}</option>`).join('');
+
+      const div = document.createElement('div');
+      div.id = `modal-row-${id}`;
+      div.className = "p-3 bg-slate-900 border border-slate-700/80 rounded-xl space-y-2.5";
+      div.innerHTML = `
+        <div class="flex items-center justify-between border-b border-slate-800 pb-1.5">
+          <span class="text-xs font-bold text-blue-400">File / Part #${id}</span>
+          ${id > 1 ? `<button type="button" onclick="removeModalFileRow(${id})" class="text-rose-400 hover:text-rose-300 text-xs font-medium">Remove ✕</button>` : ''}
+        </div>
+        
+        <div>
+          <label id="modalFileLabel_${id}" class="block text-[11px] text-slate-400 mb-1 font-semibold">Part Number (or File Name)</label>
+          <input type="text" required name="vseFileName" value="${defaultPart}" placeholder="e.g. 0090-18546" class="w-full bg-slate-800 border border-slate-700 text-xs rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-blue-500 font-mono" />
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 pt-1">
+          <div>
+            <label id="modalStage1Label_${id}" class="block text-[10px] text-slate-400 mb-1 font-bold uppercase tracking-wider">1. VSE Creation</label>
+            <select name="vseAssignee" class="w-full bg-slate-800 border border-slate-700 text-xs rounded-lg p-1.5 text-white focus:outline-none focus:border-blue-500">
+              ${s1Options}
+            </select>
+          </div>
+          <div id="modalStage2Container_${id}">
+            <label id="modalStage2Label_${id}" class="block text-[10px] text-slate-400 mb-1 font-bold uppercase tracking-wider">2. VSE Review</label>
+            <select name="vseReviewer" class="w-full bg-slate-800 border border-slate-700 text-xs rounded-lg p-1.5 text-white focus:outline-none focus:border-blue-500">
+              ${s2Options}
+            </select>
+          </div>
+          <div id="modalStage3Container_${id}">
+            <label id="modalStage3Label_${id}" class="block text-[10px] text-emerald-400 mb-1 font-bold uppercase tracking-wider">3. Lum. Upload</label>
+            <select name="vseLumUpload" class="w-full bg-slate-800 border border-slate-700 text-xs rounded-lg p-1.5 text-white focus:outline-none focus:border-emerald-500">
+              ${s3Options}
+            </select>
+          </div>
+          <div id="modalStage4Container_${id}">
+            <label id="modalStage4Label_${id}" class="block text-[10px] text-emerald-400 mb-1 font-bold uppercase tracking-wider">4. Lum. Review</label>
+            <select name="vseLumReview" class="w-full bg-slate-800 border border-slate-700 text-xs rounded-lg p-1.5 text-white focus:outline-none focus:border-emerald-500">
+              ${s4Options}
+            </select>
+          </div>
+        </div>
+      `;
+      container.appendChild(div);
+      updateRowLabels(id, mode);
+    }
+
+    function removeModalFileRow(id) {
+      const el = document.getElementById(`modal-row-${id}`);
+      if (el) el.remove();
+    }
+
+    function openModal() {
+      document.getElementById('modalFilesList').innerHTML = "";
+      modalFileRowCount = 0;
+      document.getElementById('modalGlobalType').value = "VSE_BOM";
+      renderModalFilesList();
+      
+      addModalFileRow("", "Nageswari", "Rohini", "Sathya", "Indhu");
+
+      document.getElementById('createModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('createModal').classList.add('hidden');
+    }
+
+    function handleCreateTask(e) {
+      e.preventDefault();
+      const mode = document.getElementById('modalGlobalType').value;
+      let bomName = document.getElementById('inputBomName').value.trim();
+
+      if (mode === 'VSE_BOM' && !bomName) return;
+      if (mode !== 'VSE_BOM') bomName = ""; 
+
+      const fileRows = document.querySelectorAll('#modalFilesList > div');
+      const vseList = [];
+
+      fileRows.forEach((row, idx) => {
+        const inputVal = row.querySelector('input[name="vseFileName"]').value.trim();
+        const s1Owner = row.querySelector('select[name="vseAssignee"]').value;
+        const s2Owner = row.querySelector('select[name="vseReviewer"]').value;
+        const s3Owner = row.querySelector('select[name="vseLumUpload"]')?.value || s1Owner;
+        const s4Owner = row.querySelector('select[name="vseLumReview"]')?.value || s2Owner;
+
+        if (inputVal) {
+          let stages = [];
+          if (mode === 'VSE_BOM') {
+            stages = [
+              { name: "VSE Creation", owner: s1Owner, startTime: null, endTime: null, duration: null, status: "PENDING", reworkNote: null, correctionNote: null },
+              { name: "VSE Review", owner: s2Owner, startTime: null, endTime: null, duration: null, status: "PENDING", reworkNote: null, correctionNote: null },
+              { name: "Luminovo Upload", owner: s3Owner, startTime: null, endTime: null, duration: null, status: "PENDING", reworkNote: null, correctionNote: null },
+              { name: "Luminovo Review", owner: s4Owner, startTime: null, endTime: null, duration: null, status: "PENDING", reworkNote: null, correctionNote: null }
+            ];
+          } else if (mode === 'PDF_TO_LUM') {
+            stages = [
+              { name: "PDF to Excel Prep", owner: s1Owner, startTime: null, endTime: null, duration: null, status: "PENDING", reworkNote: null, correctionNote: null },
+              { name: "Prep Review", owner: s2Owner, startTime: null, endTime: null, duration: null, status: "PENDING", reworkNote: null, correctionNote: null },
+              { name: "Luminovo Upload", owner: s3Owner, startTime: null, endTime: null, duration: null, status: "PENDING", reworkNote: null, correctionNote: null },
+              { name: "Luminovo Review", owner: s4Owner, startTime: null, endTime: null, duration: null, status: "PENDING", reworkNote: null, correctionNote: null }
+            ];
+          } else if (mode === 'DIRECT_LUM') {
+            stages = [
+              { name: "Luminovo Upload", owner: s1Owner, startTime: null, endTime: null, duration: null, status: "PENDING", reworkNote: null, correctionNote: null },
+              { name: "Luminovo Review", owner: s2Owner, startTime: null, endTime: null, duration: null, status: "PENDING", reworkNote: null, correctionNote: null }
+            ];
+          }
+
+          let partNumber = "";
+          let fileName = "";
+
+          if (mode === 'VSE_BOM') {
+            if (inputVal.includes("_VSE_") || inputVal.includes(".xlsx")) {
+              fileName = inputVal;
+              const pMatch = inputVal.match(/^([0-9A-Za-z]+-[0-9A-Za-z]+)/);
+              partNumber = pMatch ? pMatch[1] : inputVal;
+            } else {
+              partNumber = inputVal;
+              fileName = "";
+            }
+          } else {
+            fileName = inputVal;
+            partNumber = inputVal;
+          }
+
+          vseList.push({
+            id: `vse-${Date.now()}-${idx}`,
+            partNumber: partNumber,
+            fileName: fileName,
+            alreadyExistsInLuminovo: false,
+            emailHandoverNotes: [],
+            stages: stages
+          });
+        }
+      });
+
+      if (vseList.length === 0) return;
+
+      bomPackages.unshift({
+        id: "bom-pkg-" + Date.now(),
+        bomName: bomName,
+        workflowMode: mode,
+        vseList: vseList
+      });
+
+      document.getElementById('inputBomName').value = "";
+      closeModal();
+      addNotification(`New Allocation Created (${mode === 'VSE_BOM' ? bomName : mode}) with ${vseList.length} Files`, "info");
+      syncData();
+      renderAll();
+    }
+
+    function downloadDailyReport() {
+      if (bomPackages.length === 0) {
+        alert("No data available to download for this date!");
+        return;
+      }
+
+      let totalBoms = bomPackages.length;
+      let totalVse = 0;
+      let existsCount = 0;
+
+      bomPackages.forEach(pkg => {
+        pkg.vseList.forEach(v => {
+          totalVse++;
+          if (v.alreadyExistsInLuminovo) existsCount++;
+        });
+      });
+
+      let csvRows = [];
+      csvRows.push([`"Date"`, `"${currentDate}"`, `"Work Allocation"`, `"${allocatedBy}"`]);
+      csvRows.push([`"No. of resources working"`, `"${ALL_MEMBERS.length}"`, `"Shipment"`, `"${shipmentBy}"`]);
+      csvRows.push([`"Number of BoMs"`, `"${totalBoms}"`, `""`, `""`]);
+      csvRows.push([`"Number of Files"`, `"${totalVse}"`, `""`, `""`]);
+      csvRows.push([`"Exists in Luminovo Files"`, `"${existsCount}"`, `""`, `""`]);
+      csvRows.push([]);
+
+      csvRows.push([
+        `"Work Allocation Date from VSE"`,
+        `"Assigned to"`,
+        `"Part number"`,
+        `"VSE BoM"`,
+        `"Luminovo Uploading Assigned to"`,
+        `"VSE BoM Reviewer"`,
+        `"Working File Status"`,
+        `"VSE BOM Review Status"`,
+        `"Review Time"`,
+        `"Luminovo Upload Status"`,
+        `"Luminovo Reviewer"`,
+        `"Luminovo Review Status"`,
+        `"Status of files After Review"`,
+        `"Notes(From BoM) -& Reviewer Comments"`,
+        `"Assigned to Comments (Email Notes)"`,
+        `"Completed date"`,
+        `"Filled in To_VSE Status"`,
+        `"Status of files Move to DONE folder"`,
+        `"Reviewer status & Comments"`,
+        `"Total Time "`
+      ]);
+
+      bomPackages.forEach(pkg => {
+        pkg.vseList.forEach((vse, idx) => {
+          let reviewerNotes = [];
+          vse.stages.forEach(st => {
+            if (st.reworkNote) reviewerNotes.push(`${st.name} Rework: ${st.reworkNote}`);
+            if (st.correctionNote) reviewerNotes.push(`${st.name} Fix (${st.correctionNote.from}): ${st.correctionNote.text}`);
+          });
+
+          let emailNotes = (vse.emailHandoverNotes || []).map(n => `[${n.from}]: ${n.text}`).join(" | ");
+
+          const isFileDone = isVseFullyCompleted(vse);
+          let assigned1 = vse.stages[0].owner;
+          let reviewer1 = vse.stages.length > 2 ? vse.stages[1].owner : "-";
+          let uploadAssignee = vse.stages.find(s => s.name === "Luminovo Upload")?.owner || "-";
+          let lumReviewer = vse.stages.find(s => s.name === "Luminovo Review")?.owner || "-";
+
+          csvRows.push([
+            `"${idx === 0 ? (pkg.workflowMode === 'VSE_BOM' ? pkg.bomName : pkg.workflowMode) : ''}"`,
+            `"${assigned1}"`,
+            `"${vse.partNumber || ''}"`,
+            `"${vse.fileName || ''}"`,
+            `"${uploadAssignee}"`,
+            `"${reviewer1}"`,
+            `"${vse.stages[0].status}"`,
+            `"${vse.stages.length > 1 ? vse.stages[1].status : '-'}"`,
+            `"${vse.stages.length > 1 ? vse.stages[1].duration || '-' : '-'}"`,
+            `"${vse.stages.find(s => s.name === 'Luminovo Upload')?.status || '-'}"`,
+            `"${lumReviewer}"`,
+            `"${vse.stages[vse.stages.length - 1].status}"`,
+            `"${vse.alreadyExistsInLuminovo ? 'EXISTS IN LUMINOVO' : isFileDone ? 'READY FOR EMAIL' : 'IN PROGRESS'}"`,
+            `"${reviewerNotes.join(' | ')}"`,
+            `"${emailNotes}"`,
+            `"${isFileDone ? currentDate : ''}"`,
+            `"${isFileDone ? 'DONE' : 'PENDING'}"`,
+            `"${isFileDone ? 'YES' : 'NO'}"`,
+            `"${vse.alreadyExistsInLuminovo ? 'Already Exists' : ''}"`,
+            `"${vse.stages[vse.stages.length - 1].duration || '-'}"`
+          ]);
+        });
+      });
+
+      const csvContent = "data:text/csv;charset=utf-8," + csvRows.map(e => e.join(",")).join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `Pricing_Work_Allocation_${currentDate}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Polling Interval: Auto check cloud updates every 3 seconds
+    setInterval(() => {
+      fetchCloudData();
+    }, 3000);
+
+    // Initial Execution
+    window.addEventListener('DOMContentLoaded', () => {
+      setInitialDate();
+      initHeaderDropdowns();
+      fetchCloudData();
+    });
+  </script>
+</body>
+</html>
