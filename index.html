@@ -86,6 +86,17 @@
           </select>
         </div>
 
+        <!-- SEARCH BOX NEXT TO SHIPMENT BY -->
+        <div class="flex items-center gap-1 px-2 border-l border-slate-200">
+          <div class="relative flex items-center">
+            <input type="text" id="globalSearchInput" onkeydown="handleSearchKey(event)" placeholder="Search BoM / File across dates..." class="bg-slate-50 border border-slate-300 text-xs rounded-lg pl-7 pr-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500 focus:bg-white w-48 transition font-medium" />
+            <span class="absolute left-2 text-slate-400 text-xs">🔍</span>
+          </div>
+          <button onclick="performGlobalSearch()" class="bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-700 font-bold text-xs px-2.5 py-1.5 rounded-lg border border-slate-300 transition">
+            Find
+          </button>
+        </div>
+
         <!-- Action Buttons -->
         <div class="flex flex-wrap items-center gap-2 border-l border-slate-200 pl-2">
           <button onclick="downloadEmailWordDoc()" title="Download Email Format as Word Document" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3.5 py-2 rounded-lg transition shadow flex items-center gap-1.5">
@@ -151,16 +162,18 @@
 
       <div class="overflow-x-auto rounded-xl border border-slate-200">
         <table class="w-full text-left text-xs border-collapse">
-          <thead class="bg-slate-100/90 text-slate-700 uppercase text-[11px] tracking-wider border-b border-slate-300">
+          <thead class="bg-slate-100/90 text-slate-700 uppercase text-[10px] tracking-wider border-b border-slate-300">
             <tr>
-              <th class="py-3.5 px-4 font-extrabold text-slate-800 border-r border-slate-200">Resource Name</th>
-              <th class="py-3.5 px-3 text-center font-bold border-r border-slate-200">VSE Creation</th>
-              <th class="py-3.5 px-3 text-center font-bold border-r border-slate-200">VSE Review</th>
-              <th class="py-3.5 px-3 text-center font-bold border-r border-slate-200">PDF Prep</th>
-              <th class="py-3.5 px-3 text-center font-bold border-r border-slate-200">Prep Review</th>
-              <th class="py-3.5 px-3 text-center font-bold border-r border-slate-200">Lum. Upload</th>
-              <th class="py-3.5 px-3 text-center font-bold border-r border-slate-200">Lum. Review</th>
-              <th class="py-3.5 px-4 text-center font-black text-blue-700 bg-blue-100/70">TOTAL DONE</th>
+              <th class="py-3 px-3 font-extrabold text-slate-800 border-r border-slate-200">Resource</th>
+              <th class="py-3 px-2 text-center font-bold border-r border-slate-200 bg-amber-50/70">Tree Create</th>
+              <th class="py-3 px-2 text-center font-bold border-r border-slate-200 bg-amber-50/70">Tree Review</th>
+              <th class="py-3 px-2 text-center font-bold border-r border-slate-200">VSE Create</th>
+              <th class="py-3 px-2 text-center font-bold border-r border-slate-200">VSE Review</th>
+              <th class="py-3 px-2 text-center font-bold border-r border-slate-200">PDF Prep</th>
+              <th class="py-3 px-2 text-center font-bold border-r border-slate-200">Prep Review</th>
+              <th class="py-3 px-2 text-center font-bold border-r border-slate-200">Lum Upload</th>
+              <th class="py-3 px-2 text-center font-bold border-r border-slate-200">Lum Review</th>
+              <th class="py-3 px-3 text-center font-black text-blue-700 bg-blue-100/70">TOTAL</th>
             </tr>
           </thead>
           <tbody id="teamSummaryBody" class="divide-y divide-slate-200 bg-white"></tbody>
@@ -190,6 +203,24 @@
     </div>
   </div>
 
+  <!-- Global Search Results Modal -->
+  <div id="searchModal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 w-full max-w-4xl shadow-2xl flex flex-col max-h-[90vh]">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🔍</span>
+          <h3 class="text-base font-bold text-slate-900">Global Search Results</h3>
+          <span id="searchResultCountBadge" class="text-xs bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-full">0 matches</span>
+        </div>
+        <button onclick="closeSearchModal()" class="text-slate-400 hover:text-slate-700 text-sm font-bold">✕ Close</button>
+      </div>
+
+      <div id="searchResultsContainer" class="flex-1 overflow-y-auto space-y-3 py-4 pr-1">
+        <!-- Dynamic Results Injected Here -->
+      </div>
+    </div>
+  </div>
+
   <!-- Create / Edit Modal -->
   <div id="createModal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
     <div class="bg-white border border-slate-200 rounded-2xl p-6 w-full max-w-5xl shadow-2xl max-h-[90vh] flex flex-col">
@@ -200,13 +231,13 @@
       <p class="text-xs text-slate-500 mb-4" id="modalSubtitle">Select Workflow Type and assign individual owners for each stage.</p>
       
       <form onsubmit="handleSaveTask(event)" class="space-y-4 overflow-y-auto pr-2 flex-1">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 border border-slate-200 p-3.5 rounded-xl">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 border border-slate-200 p-3.5 rounded-xl items-center">
           <div>
             <label class="block text-xs font-bold text-blue-700 mb-1 uppercase">Workflow Mode</label>
             <select id="modalGlobalType" required onchange="renderModalFilesList()" class="w-full bg-white border border-slate-300 text-xs font-semibold rounded-lg p-2 text-slate-800 focus:outline-none focus:border-blue-500">
               <option value="" disabled selected>-- Select Workflow Mode --</option>
-              <option value="VSE_BOM">VSE BoM (Creation + VSE Review + Lum Upload + Lum Review)</option>
-              <option value="PDF_TO_LUM">Luminovo PDF to Excel (Prep + Prep Review + Lum Upload + Lum Review)</option>
+              <option value="VSE_BOM">VSE BoM Workflow</option>
+              <option value="PDF_TO_LUM">Luminovo PDF to Excel (Prep + Review)</option>
               <option value="DIRECT_LUM">Direct Excel Luminovo (Upload + Review)</option>
             </select>
           </div>
@@ -214,6 +245,14 @@
           <div id="modalBomNameContainer" style="display: none;">
             <label id="modalBomNameLabel" class="block text-xs font-bold text-blue-700 mb-1 uppercase">VSE BoM Name</label>
             <input id="inputBomName" type="text" placeholder="e.g. BOM_20063141-001_1" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs text-slate-800 focus:outline-none focus:border-blue-500" />
+          </div>
+
+          <!-- OPTIONAL BOM TREE CHECKBOX -->
+          <div id="bomTreeOptionContainer" style="display: none;" class="flex items-center gap-2 pt-4">
+            <input type="checkbox" id="includeBomTreeCheck" onchange="toggleBomTreeCheckbox()" class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" />
+            <label for="includeBomTreeCheck" class="text-xs font-bold text-slate-700 cursor-pointer flex items-center gap-1">
+              <span>🌳</span> Include BOM Tree as Stage 1 & 2
+            </label>
           </div>
         </div>
 
@@ -400,8 +439,8 @@
       }
     }
 
-    function handlePortalLogin(e) {
-      e.preventDefault();
+    function handlePortalLogin(event) {
+      event.preventDefault();
       const user = document.getElementById("loginUsername").value.trim();
       const pass = document.getElementById("loginPassword").value.trim();
       const errorBox = document.getElementById("loginErrorMsg");
@@ -659,14 +698,26 @@
     function renderTeamSummary() {
       const counts = {};
       ALL_MEMBERS.forEach(m => {
-        counts[m] = { vseCreation: 0, vseReview: 0, pdfPrep: 0, prepReview: 0, lumUpload: 0, lumReview: 0, total: 0 };
+        counts[m] = { 
+          treeCreation: 0, 
+          treeReview: 0, 
+          vseCreation: 0, 
+          vseReview: 0, 
+          pdfPrep: 0, 
+          prepReview: 0, 
+          lumUpload: 0, 
+          lumReview: 0, 
+          total: 0 
+        };
       });
 
       bomPackages.forEach(pkg => {
         pkg.vseList.forEach(vse => {
           vse.stages.forEach((st) => {
             if (st.status === 'COMPLETED' && counts[st.owner] && st.duration !== "N/A (Exists)") {
-              if (st.name === "VSE Creation") counts[st.owner].vseCreation++;
+              if (st.name === "BOM Tree Creation") counts[st.owner].treeCreation++;
+              else if (st.name === "BOM Tree Review") counts[st.owner].treeReview++;
+              else if (st.name === "VSE Creation") counts[st.owner].vseCreation++;
               else if (st.name === "VSE Review") counts[st.owner].vseReview++;
               else if (st.name === "PDF to Excel Prep") counts[st.owner].pdfPrep++;
               else if (st.name === "Prep Review") counts[st.owner].prepReview++;
@@ -678,10 +729,10 @@
         });
       });
 
-      const cellBadge = (val) => {
+      const cellBadge = (val, isTree = false) => {
         if (val > 0) {
           return `
-            <span class="inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-xs">
+            <span class="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-full text-xs font-black ${isTree ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-100 text-emerald-800 border border-emerald-300'} shadow-xs">
               ${val}
             </span>
           `;
@@ -692,7 +743,7 @@
       const totalBadge = (val) => {
         if (val > 0) {
           return `
-            <span class="inline-flex items-center justify-center min-w-[32px] px-2.5 py-1 rounded-full text-xs font-black bg-blue-600 text-white shadow-sm ring-2 ring-blue-200">
+            <span class="inline-flex items-center justify-center min-w-[30px] px-2 py-0.5 rounded-full text-xs font-black bg-blue-600 text-white shadow-sm ring-2 ring-blue-200">
               ${val}
             </span>
           `;
@@ -707,17 +758,19 @@
         
         return `
           <tr class="${rowBg} transition duration-150">
-            <td class="py-3 px-4 font-bold ${hasWork ? 'text-blue-900 font-extrabold' : 'text-slate-700'} border-r border-slate-200 flex items-center gap-2">
+            <td class="py-2.5 px-3 font-bold ${hasWork ? 'text-blue-900 font-extrabold' : 'text-slate-700'} border-r border-slate-200 flex items-center gap-2">
               <span class="w-2 h-2 rounded-full ${hasWork ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}"></span>
               ${m}
             </td>
-            <td class="py-3 px-3 text-center border-r border-slate-200 font-mono">${cellBadge(counts[m].vseCreation)}</td>
-            <td class="py-3 px-3 text-center border-r border-slate-200 font-mono">${cellBadge(counts[m].vseReview)}</td>
-            <td class="py-3 px-3 text-center border-r border-slate-200 font-mono">${cellBadge(counts[m].pdfPrep)}</td>
-            <td class="py-3 px-3 text-center border-r border-slate-200 font-mono">${cellBadge(counts[m].prepReview)}</td>
-            <td class="py-3 px-3 text-center border-r border-slate-200 font-mono">${cellBadge(counts[m].lumUpload)}</td>
-            <td class="py-3 px-3 text-center border-r border-slate-200 font-mono">${cellBadge(counts[m].lumReview)}</td>
-            <td class="py-3 px-4 text-center font-mono bg-blue-50/60 border-l border-blue-200">${totalBadge(counts[m].total)}</td>
+            <td class="py-2.5 px-2 text-center border-r border-slate-200 font-mono bg-amber-50/30">${cellBadge(counts[m].treeCreation, true)}</td>
+            <td class="py-2.5 px-2 text-center border-r border-slate-200 font-mono bg-amber-50/30">${cellBadge(counts[m].treeReview, true)}</td>
+            <td class="py-2.5 px-2 text-center border-r border-slate-200 font-mono">${cellBadge(counts[m].vseCreation)}</td>
+            <td class="py-2.5 px-2 text-center border-r border-slate-200 font-mono">${cellBadge(counts[m].vseReview)}</td>
+            <td class="py-2.5 px-2 text-center border-r border-slate-200 font-mono">${cellBadge(counts[m].pdfPrep)}</td>
+            <td class="py-2.5 px-2 text-center border-r border-slate-200 font-mono">${cellBadge(counts[m].prepReview)}</td>
+            <td class="py-2.5 px-2 text-center border-r border-slate-200 font-mono">${cellBadge(counts[m].lumUpload)}</td>
+            <td class="py-2.5 px-2 text-center border-r border-slate-200 font-mono">${cellBadge(counts[m].lumReview)}</td>
+            <td class="py-2.5 px-3 text-center font-mono bg-blue-50/60 border-l border-blue-200">${totalBadge(counts[m].total)}</td>
           </tr>
         `;
       }).join('');
@@ -745,6 +798,150 @@
 
       addNotification(`📌 Status Update: ${vse.fileName || vse.partNumber} marked as ${vse.alreadyExistsInLuminovo ? 'EXISTS IN LUMINOVO' : 'NORMAL FILE'}`, "info");
       syncData();
+    }
+
+    // =========================================================================
+    // GLOBAL SEARCH FEATURE (SEARCH ACROSS ALL DATES IN FIREBASE)
+    // =========================================================================
+    function handleSearchKey(event) {
+      if (event.key === 'Enter') {
+        performGlobalSearch();
+      }
+    }
+
+    function performGlobalSearch() {
+      const query = document.getElementById('globalSearchInput').value.trim().toLowerCase();
+      if (!query) {
+        alert("Please enter a BoM Name, Part Number, or File Name to search!");
+        return;
+      }
+
+      const resultsContainer = document.getElementById('searchResultsContainer');
+      resultsContainer.innerHTML = `
+        <div class="text-center py-8 text-slate-500 space-y-2">
+          <div class="inline-block animate-spin text-2xl">⏳</div>
+          <p class="text-xs font-semibold">Searching across all dates in database...</p>
+        </div>
+      `;
+      document.getElementById('searchResultCountBadge').innerText = "Searching...";
+      document.getElementById('searchModal').classList.remove('hidden');
+
+      db.ref('dates').once('value', (snapshot) => {
+        const allDatesData = snapshot.val();
+        if (!allDatesData) {
+          resultsContainer.innerHTML = `<p class="text-center py-8 text-xs text-slate-400 italic">No records found in database.</p>`;
+          document.getElementById('searchResultCountBadge').innerText = "0 matches";
+          return;
+        }
+
+        let matches = [];
+
+        Object.keys(allDatesData).forEach(dateKey => {
+          const day = allDatesData[dateKey];
+          if (day.bomPackages && Array.isArray(day.bomPackages)) {
+            day.bomPackages.forEach(pkg => {
+              const bomMatches = pkg.bomName && pkg.bomName.toLowerCase().includes(query);
+
+              pkg.vseList.forEach(vse => {
+                const partMatches = vse.partNumber && vse.partNumber.toLowerCase().includes(query);
+                const fileMatches = vse.fileName && vse.fileName.toLowerCase().includes(query);
+
+                if (bomMatches || partMatches || fileMatches) {
+                  matches.push({
+                    date: dateKey,
+                    pkgId: pkg.id,
+                    bomName: pkg.bomName || pkg.workflowMode,
+                    workflowMode: pkg.workflowMode,
+                    hasBomTree: pkg.hasBomTree,
+                    vse: vse
+                  });
+                }
+              });
+            });
+          }
+        });
+
+        document.getElementById('searchResultCountBadge').innerText = `${matches.length} matches`;
+
+        if (matches.length === 0) {
+          resultsContainer.innerHTML = `
+            <div class="text-center py-10 space-y-2 text-slate-500">
+              <p class="text-2xl">🔍</p>
+              <p class="text-xs font-bold text-slate-700">No matching files or BoMs found for "${query}"</p>
+              <p class="text-[11px] text-slate-400">Check spelling or try a partial part number.</p>
+            </div>
+          `;
+          return;
+        }
+
+        resultsContainer.innerHTML = matches.map(item => {
+          const vse = item.vse;
+          const isDone = isVseFullyCompleted(vse);
+          const isPending = !!vse.isPending;
+
+          let stagesSummaryHtml = vse.stages.map(st => `
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border ${
+              st.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+              st.status === 'IN_PROGRESS' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+              st.status === 'REWORK_REQUIRED' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+              'bg-slate-50 text-slate-500 border-slate-200'
+            }">
+              <span>${st.name.replace('Luminovo', 'Lum.').replace('Creation', 'Create')}</span>: <b>${st.owner}</b> (${st.status === 'COMPLETED' ? '✔' : st.status === 'IN_PROGRESS' ? '●' : '⏳'})
+            </span>
+          `).join('');
+
+          return `
+            <div class="p-3.5 bg-white border border-slate-200 rounded-xl shadow-xs space-y-2.5 hover:border-blue-400 transition">
+              <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="bg-blue-600 text-white font-mono text-xs font-bold px-2.5 py-0.5 rounded-lg shadow-xs">
+                    📅 Date: ${item.date}
+                  </span>
+                  <span class="font-bold text-xs text-slate-900 font-mono">
+                    BoM: ${item.bomName}
+                  </span>
+                  <span class="text-[10px] bg-slate-100 text-slate-600 border border-slate-200 px-2 py-0.5 rounded font-bold">
+                    ${item.workflowMode}
+                  </span>
+                </div>
+                <button onclick="switchPortalDate('${item.date}')" class="bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 border border-blue-200 text-xs font-bold px-3 py-1 rounded-lg transition shadow-xs flex items-center gap-1">
+                  <span>➡️</span> Go to Date
+                </button>
+              </div>
+
+              <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div class="space-y-1">
+                  <div class="flex items-center gap-2">
+                    ${vse.partNumber ? `<span class="bg-amber-50 text-amber-900 border border-amber-200 px-2 py-0.5 rounded font-mono text-xs font-bold">Part: ${vse.partNumber}</span>` : ''}
+                    <span class="font-mono font-semibold text-blue-700">${vse.fileName || '<i class="text-slate-400">File Name Pending</i>'}</span>
+                  </div>
+                </div>
+
+                <div>
+                  ${isPending ? `<span class="text-[10px] font-bold bg-amber-500 text-slate-950 px-2.5 py-1 rounded-full shadow-xs">⏳ PENDING (${vse.pendingReason || ''})</span>` :
+                    isDone ? `<span class="text-[10px] font-bold bg-emerald-600 text-white px-2.5 py-1 rounded-full shadow-xs">✔ COMPLETED</span>` :
+                    `<span class="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">IN PROGRESS</span>`}
+                </div>
+              </div>
+
+              <div class="flex flex-wrap gap-1.5 pt-1">
+                ${stagesSummaryHtml}
+              </div>
+            </div>
+          `;
+        }).join('');
+      });
+    }
+
+    function switchPortalDate(targetDate) {
+      closeSearchModal();
+      document.getElementById('datePicker').value = targetDate;
+      onDateChange();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function closeSearchModal() {
+      document.getElementById('searchModal').classList.add('hidden');
     }
 
     // =========================================================================
@@ -832,7 +1029,7 @@
     }
 
     // =========================================================================
-    // DISPATCH EMAIL (STANDARD HI ROHINI)
+    // DISPATCH EMAIL
     // =========================================================================
     function generateEmailText() {
       let createdVseBoms = [];
@@ -1089,11 +1286,11 @@
       const pkg = bomPackages.find(p => p.id === pkgId);
       const vse = pkg.vseList.find(v => v.id === vseId);
       
-      if (stageIdx === 0 && (!vse.fileName || vse.fileName === vse.partNumber)) {
+      if (vse.stages[stageIdx].name === "VSE Creation" && (!vse.fileName || vse.fileName === vse.partNumber)) {
         currentCreationContext = { pkgId, vseId, stageIdx };
         document.getElementById('creationPromptInfo').innerHTML = `
           Part Number: <b>${vse.partNumber}</b><br>
-          Assignee: <b>${vse.stages[0].owner}</b>
+          Assignee: <b>${vse.stages[stageIdx].owner}</b>
         `;
         document.getElementById('inputCreatedFileName').value = vse.fileName || `${vse.partNumber}_REV_01_VSE_00_BOM`;
         document.getElementById('completeCreationModal').classList.remove('hidden');
@@ -1155,836 +1352,4 @@
       } else {
         addNotification(`🎉 File Completion: ${displayName} is fully COMPLETED. Ready for ${notifyTarget} to Email!`, "success");
         if (shipmentBy) {
-          const teamsMsg = `Hi ${shipmentBy},\n\nFile "${displayName}" has passed all reviews and is COMPLETED. Ready for Daily Dispatch Email.\n\nThanks,\n${st.owner}`;
-          notifyOnTeams(shipmentBy, teamsMsg);
-        }
-      }
-      syncData();
-    }
-
-    function handleAcknowledgeCorrection(pkgId, vseId, stageIdx) {
-      const pkg = bomPackages.find(p => p.id === pkgId);
-      const vse = pkg.vseList.find(v => v.id === vseId);
-      const st = vse.stages[stageIdx];
-      const creatorName = st.owner;
-      
-      st.correctionNote = null;
-      addNotification(`👍 ${creatorName} acknowledged the correction note on ${vse.fileName || vse.partNumber} (${st.name})`, "info");
-      syncData();
-    }
-
-    function openReworkModal(pkgId, vseId, stageIdx) {
-      const pkg = bomPackages.find(p => p.id === pkgId);
-      const vse = pkg.vseList.find(v => v.id === vseId);
-      const prevStage = vse.stages[stageIdx - 1];
-      const reviewer = vse.stages[stageIdx].owner;
-      const displayName = vse.fileName || `Part: ${vse.partNumber}`;
-
-      currentReworkContext = { pkgId, vseId, stageIdx, targetOwner: prevStage.owner, reviewer, displayName };
-
-      document.getElementById('reworkTargetInfo').innerHTML = `
-        Sending rework to <b>${prevStage.owner}</b> for <b>${displayName}</b> (Reverting to ${prevStage.name})
-      `;
-      document.getElementById('reworkNote').value = "";
-      document.getElementById('reworkModal').classList.remove('hidden');
-    }
-
-    function closeReworkModal() {
-      document.getElementById('reworkModal').classList.add('hidden');
-      currentReworkContext = null;
-    }
-
-    function submitRework() {
-      if (!currentReworkContext) return;
-      const note = document.getElementById('reworkNote').value.trim() || "Changes requested during review.";
-      const { pkgId, vseId, stageIdx, targetOwner, reviewer, displayName } = currentReworkContext;
-
-      const pkg = bomPackages.find(p => p.id === pkgId);
-      const vse = pkg.vseList.find(v => v.id === vseId);
-
-      vse.stages[stageIdx - 1].status = "REWORK_REQUIRED";
-      vse.stages[stageIdx - 1].reworkNote = note;
-      vse.stages[stageIdx - 1].endTime = null;
-
-      vse.stages[stageIdx].status = "PENDING";
-      vse.stages[stageIdx].startTime = null;
-
-      addNotification(`⚠️ Full Rework Requested: ${reviewer} sent back ${displayName} to ${targetOwner}! Note: "${note}"`, "rework");
-      closeReworkModal();
-
-      const teamsMsg = `Hi ${targetOwner},\n\nRework has been requested for "${displayName}".\nReviewer Reason: ${note}\n\nPlease check the portal.`;
-      notifyOnTeams(targetOwner, teamsMsg);
-
-      syncData();
-    }
-
-    function openMinorModal(pkgId, vseId, stageIdx) {
-      const pkg = bomPackages.find(p => p.id === pkgId);
-      const vse = pkg.vseList.find(v => v.id === vseId);
-      const prevStage = vse.stages[stageIdx - 1];
-      const reviewer = vse.stages[stageIdx].owner;
-      const displayName = vse.fileName || `Part: ${vse.partNumber}`;
-
-      currentMinorContext = { pkgId, vseId, stageIdx, creator: prevStage.owner, reviewer, displayName };
-
-      document.getElementById('minorTargetInfo').innerHTML = `
-        You are approving this stage & sending an informational note to <b>${prevStage.owner}</b> for <b>${displayName}</b>.
-      `;
-      document.getElementById('minorCorrectionNote').value = "";
-      document.getElementById('minorCorrectionModal').classList.remove('hidden');
-    }
-
-    function closeMinorModal() {
-      document.getElementById('minorCorrectionModal').classList.add('hidden');
-      currentMinorContext = null;
-    }
-
-    function submitMinorCorrection() {
-      if (!currentMinorContext) return;
-      const note = document.getElementById('minorCorrectionNote').value.trim() || "Minor correction handled by reviewer.";
-      const { pkgId, vseId, stageIdx, creator, reviewer, displayName } = currentMinorContext;
-
-      const pkg = bomPackages.find(p => p.id === pkgId);
-      const vse = pkg.vseList.find(v => v.id === vseId);
-
-      vse.stages[stageIdx - 1].correctionNote = {
-        from: reviewer,
-        text: note,
-        time: getTimeStr()
-      };
-
-      closeMinorModal();
-      executeComplete(pkgId, vseId, stageIdx);
-      addNotification(`✍️ Reviewer Note: ${reviewer} updated ${displayName} & notified ${creator}: "${note}"`, "minor");
-    }
-
-    // =========================================================================
-    // EDIT & DELETE ALLOCATION
-    // =========================================================================
-    function editAllocation(pkgId) {
-      const pkg = bomPackages.find(p => p.id === pkgId);
-      if (!pkg) return;
-
-      currentEditingPkgId = pkgId;
-
-      document.getElementById('modalTitle').innerText = "Edit Task Allocation";
-      document.getElementById('modalSubtitle').innerText = "Modify Workflow Type, BoM name, part numbers, or stage assignees.";
-      document.getElementById('editModeBadge').classList.remove('hidden');
-      document.getElementById('modalSubmitBtn').innerText = "Update Allocation Changes ✔";
-
-      document.getElementById('modalGlobalType').value = pkg.workflowMode;
-      document.getElementById('inputBomName').value = pkg.bomName || "";
-
-      renderModalFilesList();
-
-      document.getElementById('modalFilesList').innerHTML = "";
-      modalFileRowCount = 0;
-
-      pkg.vseList.forEach((vse) => {
-        const valToSet = vse.fileName || vse.partNumber;
-        let s1 = "", s2 = "", s3 = "", s4 = "";
-        if (pkg.workflowMode === 'DIRECT_LUM') {
-          s1 = vse.stages.find(s => s.name === "Luminovo Upload")?.owner || "";
-          s2 = vse.stages.find(s => s.name === "Luminovo Review")?.owner || "";
-        } else {
-          s1 = vse.stages[0]?.owner || "";
-          s2 = vse.stages[1]?.owner || "";
-          s3 = vse.stages[2]?.owner || "";
-          s4 = vse.stages[3]?.owner || "";
-        }
-        addModalFileRow(valToSet, s1, s2, s3, s4, vse.id);
-      });
-
-      document.getElementById('createModal').classList.remove('hidden');
-    }
-
-    function deleteAllocation(pkgId) {
-      const pkg = bomPackages.find(p => p.id === pkgId);
-      if (!pkg) return;
-
-      const name = pkg.bomName || `${pkg.vseList.length} files`;
-      if (confirm(`Are you sure you want to delete allocation "${name}"? This action cannot be undone.`)) {
-        bomPackages = bomPackages.filter(p => p.id !== pkgId);
-        addNotification(`🗑️ Deleted Allocation: ${name}`, "rework");
-        syncData();
-      }
-    }
-
-    function renderCards() {
-      const container = document.getElementById('cardsContainer');
-      if (bomPackages.length === 0) {
-        container.innerHTML = `
-          <div class="bg-white border border-slate-200 rounded-2xl p-8 text-center text-slate-500 shadow-sm">
-            <p class="text-sm">No tasks allocated for this date.</p>
-            <p class="text-xs mt-1 text-slate-400">Click the "+ New Allocation" button above to assign tasks.</p>
-          </div>
-        `;
-        return;
-      }
-
-      container.innerHTML = bomPackages.map(pkg => {
-        const allCompleted = pkg.vseList.every(v => isVseFullyCompleted(v));
-        const doneCount = pkg.vseList.filter(v => isVseFullyCompleted(v)).length;
-        const isVseMode = pkg.workflowMode === 'VSE_BOM';
-
-        let vseFilesHtml = pkg.vseList.map((vse, vIdx) => {
-          const isFileDone = isVseFullyCompleted(vse);
-          const isPending = !!vse.isPending;
-
-          let stagesHtml = vse.stages.map((st, idx) => {
-            const isLumStage = st.name.includes("Luminovo") || st.name.includes("Lum");
-            const isSkippedByExist = vse.alreadyExistsInLuminovo && isLumStage;
-            const isDone = st.status === "COMPLETED";
-            const isRunning = st.status === "IN_PROGRESS";
-            const isRework = st.status === "REWORK_REQUIRED";
-            const isReviewStage = st.name.includes("Review");
-            const canStart = idx === 0 || vse.stages[idx - 1].status === "COMPLETED";
-            const hasCorrectionNote = !!st.correctionNote;
-
-            let buttonHtml = '';
-            if (isPending) {
-              buttonHtml = `
-                <div class="text-center py-1 bg-amber-50 border border-amber-200 rounded text-[10px] text-amber-700 font-bold">
-                  ⏸ Paused (Pending)
-                </div>
-              `;
-            } else if (isSkippedByExist) {
-              buttonHtml = `
-                <div class="text-center py-1 bg-amber-50 border border-amber-200 rounded text-[10px] text-amber-700 font-bold">
-                  ⏩ Skipped (Exists)
-                </div>
-              `;
-            } else if (isRework) {
-              buttonHtml = `
-                <button onclick="handleStart('${pkg.id}', '${vse.id}', ${idx})" 
-                  class="w-full py-1 rounded font-bold text-[10px] bg-rose-600 hover:bg-rose-700 text-white transition shadow animate-bounce">
-                  Fix Rework ↺
-                </button>
-              `;
-            } else if (!isDone && !isRunning) {
-              buttonHtml = `
-                <button onclick="handleStart('${pkg.id}', '${vse.id}', ${idx})" ${!canStart ? 'disabled' : ''} 
-                  class="w-full py-1 rounded font-semibold text-[11px] transition ${
-                    canStart ? 'bg-white hover:bg-blue-600 hover:text-white text-slate-700 border border-slate-300 cursor-pointer shadow-xs' : 'bg-slate-50 text-slate-300 border border-slate-100 cursor-not-allowed'
-                  }">
-                  Start
-                </button>
-              `;
-            } else if (isRunning) {
-              if (isReviewStage) {
-                buttonHtml = `
-                  <div class="flex flex-col gap-1 mt-1">
-                    <button onclick="handleCompleteClick('${pkg.id}', '${vse.id}', ${idx})" 
-                      class="w-full py-1 rounded font-bold text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white transition shadow">
-                      Approve ✔
-                    </button>
-                    <div class="flex gap-1">
-                      <button onclick="openMinorModal('${pkg.id}', '${vse.id}', ${idx})" 
-                        title="Reviewer self-fixes and leaves note to creator"
-                        class="flex-1 py-1 rounded font-bold text-[9px] bg-indigo-600 hover:bg-indigo-700 text-white transition shadow">
-                        Fix & Notify ✍️
-                      </button>
-                      <button onclick="openReworkModal('${pkg.id}', '${vse.id}', ${idx})" 
-                        title="Send back to previous assignee"
-                        class="flex-1 py-1 rounded font-bold text-[9px] bg-rose-600 hover:bg-rose-700 text-white transition shadow">
-                        Rework ↺
-                      </button>
-                    </div>
-                  </div>
-                `;
-              } else {
-                buttonHtml = `
-                  <button onclick="handleCompleteClick('${pkg.id}', '${vse.id}', ${idx})" 
-                    class="w-full py-1 rounded font-bold text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white transition shadow cursor-pointer animate-pulse">
-                    ${idx === 0 && (!vse.fileName || vse.fileName === vse.partNumber) ? 'Complete & Name File 📝' : 'Complete ✔'}
-                  </button>
-                `;
-              }
-            }
-
-            const ownerOptions = ALL_MEMBERS.map(m => `
-              <option value="${m}" ${m === st.owner ? 'selected' : ''}>${m}</option>
-            `).join('');
-
-            return `
-              <div class="p-2.5 rounded-xl border text-xs flex flex-col justify-between ${
-                isPending ? 'bg-amber-50/40 border-amber-200 text-amber-900' :
-                isSkippedByExist ? 'bg-slate-50 border-slate-200 text-slate-400' :
-                isDone ? 'bg-emerald-50/70 border-emerald-300 text-emerald-950' :
-                isRunning ? 'bg-blue-50/70 border-blue-400 text-blue-950 ring-1 ring-blue-400' :
-                isRework ? 'bg-rose-50/70 border-rose-300 text-rose-950 ring-1 ring-rose-400' :
-                'bg-white border-slate-200 text-slate-600 shadow-xs'
-              }">
-                <div>
-                  <div class="flex justify-between items-center mb-1">
-                    <span class="font-bold text-[10px] uppercase ${isRework ? 'text-rose-600' : 'text-slate-500'}">
-                      S${idx + 1}: ${st.name.replace('Luminovo', 'Lum.')}
-                    </span>
-                    ${isSkippedByExist ? '<span class="text-amber-500 font-bold text-[10px]">⏩</span>' : isDone ? '<span class="text-emerald-600 font-bold text-[10px]">✔</span>' : ''}
-                    ${isRunning ? '<span class="text-blue-600 font-bold text-[10px]">●</span>' : ''}
-                    ${isRework ? '<span class="text-rose-600 font-bold text-[10px]">⚠️ REWORK</span>' : ''}
-                  </div>
-
-                  <div class="flex items-center gap-1 text-[11px] mb-1">
-                    ${isSkippedByExist ? `<span class="text-slate-400 italic">Not Required</span>` : isDone || isRunning || isRework ? `<span class="text-slate-900 font-semibold">${st.owner}</span>` : `
-                      <select onchange="handleOwnerChange('${pkg.id}', '${vse.id}', ${idx}, this.value)" class="bg-white border border-slate-300 text-slate-800 text-[11px] rounded px-1 py-0.5 focus:outline-none">
-                        ${ownerOptions}
-                      </select>
-                    `}
-                  </div>
-
-                  ${st.reworkNote ? `
-                    <div class="my-1 p-1 bg-rose-100 border border-rose-200 rounded text-[9px] text-rose-800">
-                      <b>Rework Reason:</b> ${st.reworkNote}
-                    </div>
-                  ` : ''}
-
-                  ${hasCorrectionNote ? `
-                    <div class="my-1.5 p-1.5 bg-indigo-50 border border-indigo-200 rounded-lg text-[10px] text-indigo-900 shadow-sm">
-                      <div class="flex items-center justify-between font-bold text-indigo-700 text-[9px] mb-0.5">
-                        <span>📝 Correction by ${st.correctionNote.from}:</span>
-                        <span class="text-[8px] text-indigo-500">${st.correctionNote.time}</span>
-                      </div>
-                      <p class="italic text-[10px] text-slate-700 mb-1.5">"${st.correctionNote.text}"</p>
-                      <button onclick="handleAcknowledgeCorrection('${pkg.id}', '${vse.id}', ${idx})" 
-                        class="w-full py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-[9px] font-bold transition flex items-center justify-center gap-1 shadow">
-                        <span>✔</span> Acknowledge
-                      </button>
-                    </div>
-                  ` : ''}
-
-                  ${st.startTime && !isSkippedByExist ? `
-                    <div class="mt-1 pt-1 border-t border-slate-200 text-[10px] space-y-0.5">
-                      <p class="text-slate-500">${st.startTime} ${st.endTime ? '→ ' + st.endTime : ''}</p>
-                      ${st.duration ? `<p class="text-amber-700 font-bold">${st.duration}</p>` : ''}
-                    </div>
-                  ` : ''}
-                </div>
-                <div class="mt-2">${buttonHtml}</div>
-              </div>
-            `;
-          }).join('');
-
-          const typeBadges = {
-            'VSE_BOM': '<span class="text-[9px] bg-blue-100 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded font-bold">VSE BoM</span>',
-            'PDF_TO_LUM': '<span class="text-[9px] bg-amber-100 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded font-bold">PDF to Lum</span>',
-            'DIRECT_LUM': '<span class="text-[9px] bg-purple-100 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded font-bold">Direct Excel Lum</span>'
-          };
-
-          return `
-            <div class="p-3.5 bg-white border ${isPending ? 'border-amber-400 bg-amber-50/20' : isFileDone ? 'border-emerald-300 bg-emerald-50/20' : 'border-slate-200'} rounded-xl space-y-2 shadow-sm">
-              <div class="flex flex-wrap items-center justify-between gap-2">
-                <div class="flex items-center gap-2 flex-wrap">
-                  <span class="text-xs font-bold text-slate-400">#${vIdx + 1}</span>
-                  ${vse.partNumber ? `<span class="bg-slate-100 text-amber-800 border border-slate-200 px-2 py-0.5 rounded font-mono text-xs font-bold">Part: ${vse.partNumber}</span>` : ''}
-                  <span class="font-mono font-semibold text-xs text-blue-700">${vse.fileName ? vse.fileName : '<span class="text-slate-400 italic">File Name Pending Creation...</span>'}</span>
-                  ${typeBadges[pkg.workflowMode] || ''}
-                  ${vse.alreadyExistsInLuminovo ? '<span class="text-[9px] bg-amber-200 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full font-bold">ALREADY EXISTS IN LUMINOVO</span>' : ''}
-                  ${isPending ? `<span class="text-[9px] bg-rose-100 text-rose-800 border border-rose-300 px-2 py-0.5 rounded-full font-bold">PENDING: ${vse.pendingReason || 'Pending'}</span>` : ''}
-                </div>
-                <div class="flex items-center gap-2">
-                  <button onclick="togglePendingModal('${pkg.id}', '${vse.id}')" class="text-[10px] px-2.5 py-1 rounded-lg font-bold border transition shadow-xs flex items-center gap-1 ${
-                    isPending ? 'bg-rose-600 text-white border-rose-700 hover:bg-rose-700' : 'bg-white text-rose-700 border-rose-300 hover:bg-rose-50'
-                  }">
-                    <span>⏳</span> ${isPending ? 'Pending Active ✕' : 'Mark Pending'}
-                  </button>
-
-                  <button onclick="toggleAlreadyExists('${pkg.id}', '${vse.id}')" class="text-[10px] px-2 py-1 rounded font-bold border transition ${
-                    vse.alreadyExistsInLuminovo ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
-                  }">
-                    ${vse.alreadyExistsInLuminovo ? '⚠️ Exists in Lum' : 'Mark Exists'}
-                  </button>
-                  <button onclick="openShipmentNoteModal('${pkg.id}', '${vse.id}')" class="text-[10px] bg-white hover:bg-slate-50 text-emerald-700 border border-slate-300 px-2.5 py-1 rounded-lg transition font-medium flex items-center gap-1 shadow-sm">
-                    <span>✉️</span> Note
-                  </button>
-                  ${isPending ? `
-                    <span class="text-[10px] font-bold bg-amber-500 text-slate-950 px-2 py-0.5 rounded-full shadow-sm">⏳ PENDING</span>
-                  ` : isFileDone ? `
-                    <span class="text-[10px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full shadow-sm">✔ READY FOR EMAIL</span>
-                  ` : `
-                    <span class="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">IN PROGRESS</span>
-                  `}
-                </div>
-              </div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-${vse.stages.length} gap-2">
-                ${stagesHtml}
-              </div>
-            </div>
-          `;
-        }).join('');
-
-        return `
-          <div class="rounded-2xl p-5 border transition shadow-sm ${
-            allCompleted ? 'bg-emerald-50/40 border-emerald-300' : 'bg-white border-slate-200'
-          }">
-            <div class="flex flex-wrap items-center justify-between pb-3 border-b border-slate-200 gap-2">
-              <div>
-                ${isVseMode ? `
-                  <span class="text-[10px] uppercase tracking-wider font-bold text-blue-600">VSE BoM Name</span>
-                  <h3 class="font-black text-lg text-slate-900">${pkg.bomName}</h3>
-                ` : `
-                  <span class="text-[10px] uppercase tracking-wider font-bold text-amber-600">${pkg.workflowMode === 'PDF_TO_LUM' ? 'Luminovo (PDF to Excel)' : 'Direct Excel Luminovo'}</span>
-                  <h3 class="font-black text-lg text-slate-900">${pkg.vseList.length} Files Allocation</h3>
-                `}
-                <p class="text-xs text-slate-500">${isVseMode ? 'VSE BoM Files Progress' : 'Files Progress'}: <span class="text-slate-800 font-bold">${doneCount} of ${pkg.vseList.length} Completed</span></p>
-              </div>
-
-              <!-- Header Badges & Actions (Edit + Delete) -->
-              <div class="flex items-center gap-2 flex-wrap">
-                ${allCompleted ? `
-                  <div class="bg-emerald-600 text-white font-black text-xs px-3 py-1.5 rounded-full uppercase tracking-wider shadow">
-                    ✔ ALL ${pkg.vseList.length} COMPLETED
-                  </div>
-                ` : `
-                  <div class="bg-blue-50 text-blue-700 border border-blue-200 font-bold text-xs px-3 py-1 rounded-full uppercase">
-                    ⚡ ${pkg.vseList.length} ALLOCATED
-                  </div>
-                `}
-
-                <button onclick="editAllocation('${pkg.id}')" title="Edit entire allocation" class="bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-300 font-bold text-xs px-3 py-1 rounded-lg transition shadow-xs flex items-center gap-1">
-                  <span>✏️</span> Edit
-                </button>
-                <button onclick="deleteAllocation('${pkg.id}')" title="Delete allocation" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 font-bold text-xs px-2.5 py-1 rounded-lg transition shadow-xs flex items-center gap-1">
-                  <span>🗑️</span>
-                </button>
-              </div>
-            </div>
-
-            <div class="mt-4 space-y-3">
-              ${vseFilesHtml}
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function renderAll() {
-      renderCards();
-      renderNotifications();
-      renderMetrics();
-      renderTeamSummary();
-    }
-
-    let modalFileRowCount = 0;
-
-    function renderModalFilesList() {
-      const mode = document.getElementById('modalGlobalType').value;
-      const bomContainer = document.getElementById('modalBomNameContainer');
-      const bomInput = document.getElementById('inputBomName');
-      const filesLabel = document.getElementById('modalFilesSectionLabel');
-
-      if (mode === 'VSE_BOM') {
-        bomContainer.style.display = "block";
-        bomInput.required = true;
-        filesLabel.innerText = "VSE BoM Part Numbers / Files List";
-      } else if (mode === 'PDF_TO_LUM') {
-        bomContainer.style.display = "none";
-        bomInput.required = false;
-        bomInput.value = "";
-        filesLabel.innerText = "PDF Files List";
-      } else if (mode === 'DIRECT_LUM') {
-        bomContainer.style.display = "none";
-        bomInput.required = false;
-        bomInput.value = "";
-        filesLabel.innerText = "Excel Files List";
-      } else {
-        bomContainer.style.display = "none";
-        bomInput.required = false;
-        bomInput.value = "";
-        filesLabel.innerText = "Part Numbers / Files List";
-      }
-
-      const rows = document.querySelectorAll('#modalFilesList > div');
-      rows.forEach(row => {
-        const id = row.id.split('-')[2];
-        updateRowLabels(id, mode);
-      });
-    }
-
-    function updateRowLabels(id, mode) {
-      const fileLabel = document.getElementById(`modalFileLabel_${id}`);
-      const fileInput = document.querySelector(`#modal-row-${id} input[name="vseFileName"]`);
-      const stage1Label = document.getElementById(`modalStage1Label_${id}`);
-      const stage2Label = document.getElementById(`modalStage2Label_${id}`);
-      const stage2Container = document.getElementById(`modalStage2Container_${id}`);
-      const stage3Container = document.getElementById(`modalStage3Container_${id}`);
-      const stage4Container = document.getElementById(`modalStage4Container_${id}`);
-
-      if (!fileLabel) return;
-
-      if (mode === 'VSE_BOM') {
-        fileLabel.innerText = "Part Number (or Initial File Name)";
-        fileInput.placeholder = "e.g. 0090-18546";
-        stage1Label.innerText = "1. VSE Creation";
-        stage2Label.innerText = "2. VSE Review";
-        stage2Container.style.display = "block";
-        stage3Container.style.display = "block";
-        stage4Container.style.display = "block";
-      } else if (mode === 'PDF_TO_LUM') {
-        fileLabel.innerText = "PDF File Name / Part";
-        fileInput.placeholder = "e.g. 0090-18546_Schematic.pdf";
-        stage1Label.innerText = "1. PDF Prep";
-        stage2Label.innerText = "2. Prep Review";
-        stage2Container.style.display = "block";
-        stage3Container.style.display = "block";
-        stage4Container.style.display = "block";
-      } else if (mode === 'DIRECT_LUM') {
-        fileLabel.innerText = "Excel File Name / Part";
-        fileInput.placeholder = "e.g. 0090-18546_BOM.xlsx";
-        stage1Label.innerText = "1. Lum. Upload";
-        stage2Label.innerText = "2. Lum. Review";
-        stage2Container.style.display = "block";
-        stage3Container.style.display = "none";
-        stage4Container.style.display = "none";
-      } else {
-        fileLabel.innerText = "Part Number / File Name";
-        fileInput.placeholder = "Enter name/part...";
-        stage1Label.innerText = "1. Stage 1";
-        stage2Label.innerText = "2. Stage 2";
-        stage2Container.style.display = "block";
-        stage3Container.style.display = "block";
-        stage4Container.style.display = "block";
-      }
-    }
-
-    function addModalFileRow(defaultPart = "", defaultAssignee = "", defaultReviewer = "", defaultLumUpload = "", defaultLumReview = "", existingVseId = "") {
-      modalFileRowCount++;
-      const id = modalFileRowCount;
-      const container = document.getElementById('modalFilesList');
-      const mode = document.getElementById('modalGlobalType') ? document.getElementById('modalGlobalType').value : '';
-
-      const makeOptions = (selectedVal) => {
-        let opts = `<option value="" disabled ${!selectedVal ? 'selected' : ''}>-- Select Member --</option>`;
-        opts += ALL_MEMBERS.map(m => `<option value="${m}" ${m === selectedVal ? 'selected' : ''}>${m}</option>`).join('');
-        return opts;
-      };
-
-      const s1Options = makeOptions(defaultAssignee);
-      const s2Options = makeOptions(defaultReviewer);
-      const s3Options = makeOptions(defaultLumUpload);
-      const s4Options = makeOptions(defaultLumReview);
-
-      const div = document.createElement('div');
-      div.id = `modal-row-${id}`;
-      div.dataset.existingVseId = existingVseId || "";
-      div.className = "p-3 bg-white border border-slate-200 rounded-xl space-y-2.5 shadow-xs";
-      div.innerHTML = `
-        <div class="flex items-center justify-between border-b border-slate-200 pb-1.5">
-          <span class="text-xs font-bold text-blue-600">File / Part #${id}</span>
-          ${id > 1 ? `<button type="button" onclick="removeModalFileRow(${id})" class="text-rose-600 hover:text-rose-700 text-xs font-medium">Remove ✕</button>` : ''}
-        </div>
-        
-        <div>
-          <label id="modalFileLabel_${id}" class="block text-[11px] text-slate-600 mb-1 font-semibold">Part Number (or File Name)</label>
-          <input type="text" required name="vseFileName" value="${defaultPart}" placeholder="e.g. 0090-18546" class="w-full bg-white border border-slate-300 text-xs rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500 font-mono" />
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 pt-1">
-          <div>
-            <label id="modalStage1Label_${id}" class="block text-[10px] text-slate-600 mb-1 font-bold uppercase tracking-wider">1. VSE Creation</label>
-            <select name="vseAssignee" required class="w-full bg-white border border-slate-300 text-xs rounded-lg p-1.5 text-slate-800 focus:outline-none focus:border-blue-500">
-              ${s1Options}
-            </select>
-          </div>
-          <div id="modalStage2Container_${id}">
-            <label id="modalStage2Label_${id}" class="block text-[10px] text-slate-600 mb-1 font-bold uppercase tracking-wider">2. VSE Review</label>
-            <select name="vseReviewer" required class="w-full bg-white border border-slate-300 text-xs rounded-lg p-1.5 text-slate-800 focus:outline-none focus:border-blue-500">
-              ${s2Options}
-            </select>
-          </div>
-          <div id="modalStage3Container_${id}">
-            <label id="modalStage3Label_${id}" class="block text-[10px] text-emerald-700 mb-1 font-bold uppercase tracking-wider">3. Lum. Upload</label>
-            <select name="vseLumUpload" required class="w-full bg-white border border-slate-300 text-xs rounded-lg p-1.5 text-slate-800 focus:outline-none focus:border-emerald-500">
-              ${s3Options}
-            </select>
-          </div>
-          <div id="modalStage4Container_${id}">
-            <label id="modalStage4Label_${id}" class="block text-[10px] text-emerald-700 mb-1 font-bold uppercase tracking-wider">4. Lum. Review</label>
-            <select name="vseLumReview" required class="w-full bg-white border border-slate-300 text-xs rounded-lg p-1.5 text-slate-800 focus:outline-none focus:border-emerald-500">
-              ${s4Options}
-            </select>
-          </div>
-        </div>
-      `;
-      container.appendChild(div);
-      updateRowLabels(id, mode);
-    }
-
-    function removeModalFileRow(id) {
-      const el = document.getElementById(`modal-row-${id}`);
-      if (el) el.remove();
-    }
-
-    function openModal() {
-      currentEditingPkgId = null;
-      document.getElementById('modalTitle').innerText = "Create Task Allocation";
-      document.getElementById('modalSubtitle').innerText = "Select Workflow Type and assign individual owners for each stage.";
-      document.getElementById('editModeBadge').classList.add('hidden');
-      document.getElementById('modalSubmitBtn').innerText = "Save & Allocate All";
-
-      document.getElementById('modalFilesList').innerHTML = "";
-      modalFileRowCount = 0;
-      document.getElementById('modalGlobalType').value = "";
-      document.getElementById('inputBomName').value = "";
-      document.getElementById('modalBomNameContainer').style.display = "none";
-      renderModalFilesList();
-      addModalFileRow("", "", "", "", "");
-      document.getElementById('createModal').classList.remove('hidden');
-    }
-
-    function closeModal() {
-      document.getElementById('createModal').classList.add('hidden');
-      currentEditingPkgId = null;
-    }
-
-    function handleSaveTask(e) {
-      e.preventDefault();
-      const mode = document.getElementById('modalGlobalType').value;
-      if (!mode) {
-        alert("Please select a Workflow Mode!");
-        return;
-      }
-
-      let bomName = document.getElementById('inputBomName').value.trim();
-      if (mode === 'VSE_BOM' && !bomName) {
-        alert("Please enter VSE BoM Name!");
-        return;
-      }
-      if (mode !== 'VSE_BOM') bomName = ""; 
-
-      const fileRows = document.querySelectorAll('#modalFilesList > div');
-      const vseList = [];
-
-      const existingPkg = currentEditingPkgId ? bomPackages.find(p => p.id === currentEditingPkgId) : null;
-
-      for (let row of fileRows) {
-        const inputVal = row.querySelector('input[name="vseFileName"]').value.trim();
-        const s1Owner = row.querySelector('select[name="vseAssignee"]').value;
-        const s2Owner = row.querySelector('select[name="vseReviewer"]').value;
-        const s3Owner = row.querySelector('select[name="vseLumUpload"]')?.value;
-        const s4Owner = row.querySelector('select[name="vseLumReview"]')?.value;
-        const existingVseId = row.dataset.existingVseId;
-
-        if (mode === 'VSE_BOM' || mode === 'PDF_TO_LUM') {
-          if (!s1Owner || !s2Owner || !s3Owner || !s4Owner) {
-            alert("Please select team members for all stages in all rows!");
-            return;
-          }
-        } else if (mode === 'DIRECT_LUM') {
-          if (!s1Owner || !s2Owner) {
-            alert("Please select team members for both Lum. Upload and Lum. Review!");
-            return;
-          }
-        }
-
-        if (inputVal) {
-          const oldVse = existingPkg ? existingPkg.vseList.find(v => v.id === existingVseId) : null;
-
-          const buildStage = (name, newOwner, stageIdx) => {
-            if (oldVse && oldVse.stages) {
-              const prevSt = oldVse.stages.find(s => s.name === name) || oldVse.stages[stageIdx];
-              if (prevSt && prevSt.name === name) {
-                return { ...prevSt, owner: newOwner };
-              }
-            }
-            return { name, owner: newOwner, startTime: null, endTime: null, duration: null, status: "PENDING", reworkNote: null, correctionNote: null };
-          };
-
-          let stages = [];
-          if (mode === 'VSE_BOM') {
-            stages = [
-              buildStage("VSE Creation", s1Owner, 0),
-              buildStage("VSE Review", s2Owner, 1),
-              buildStage("Luminovo Upload", s3Owner, 2),
-              buildStage("Luminovo Review", s4Owner, 3)
-            ];
-          } else if (mode === 'PDF_TO_LUM') {
-            stages = [
-              buildStage("PDF to Excel Prep", s1Owner, 0),
-              buildStage("Prep Review", s2Owner, 1),
-              buildStage("Luminovo Upload", s3Owner, 2),
-              buildStage("Luminovo Review", s4Owner, 3)
-            ];
-          } else if (mode === 'DIRECT_LUM') {
-            stages = [
-              buildStage("Luminovo Upload", s1Owner, 0),
-              buildStage("Luminovo Review", s2Owner, 1)
-            ];
-          }
-
-          let partNumber = "";
-          let fileName = "";
-
-          if (mode === 'VSE_BOM') {
-            if (inputVal.includes("_VSE_") || inputVal.includes(".xlsx")) {
-              fileName = inputVal;
-              const pMatch = inputVal.match(/^([0-9A-Za-z]+-[0-9A-Za-z]+)/);
-              partNumber = pMatch ? pMatch[1] : inputVal;
-            } else {
-              partNumber = inputVal;
-              fileName = oldVse?.fileName || "";
-            }
-          } else {
-            fileName = inputVal;
-            partNumber = inputVal;
-          }
-
-          vseList.push({
-            id: existingVseId || `vse-${Date.now()}-${vseList.length}`,
-            partNumber: partNumber,
-            fileName: fileName,
-            alreadyExistsInLuminovo: oldVse ? oldVse.alreadyExistsInLuminovo : false,
-            isPending: oldVse ? !!oldVse.isPending : false,
-            pendingReason: oldVse ? (oldVse.pendingReason || "") : "",
-            emailHandoverNotes: oldVse ? (oldVse.emailHandoverNotes || []) : [],
-            stages: stages
-          });
-        }
-      }
-
-      if (vseList.length === 0) return;
-
-      if (currentEditingPkgId) {
-        const pkgIndex = bomPackages.findIndex(p => p.id === currentEditingPkgId);
-        if (pkgIndex !== -1) {
-          bomPackages[pkgIndex].bomName = bomName;
-          bomPackages[pkgIndex].workflowMode = mode;
-          bomPackages[pkgIndex].vseList = vseList;
-        }
-        addNotification(`✏️ Allocation Updated: ${mode === 'VSE_BOM' ? bomName : mode} (${vseList.length} Files)`, "info");
-      } else {
-        bomPackages.unshift({
-          id: "bom-pkg-" + Date.now(),
-          bomName: bomName,
-          workflowMode: mode,
-          vseList: vseList
-        });
-        addNotification(`New Allocation Created: ${mode === 'VSE_BOM' ? bomName : mode} (${vseList.length} Files)`, "info");
-      }
-
-      document.getElementById('inputBomName').value = "";
-      closeModal();
-      syncData();
-    }
-
-    function downloadDailyReport() {
-      if (bomPackages.length === 0) {
-        alert("No data available to download for this date!");
-        return;
-      }
-
-      let totalBoms = bomPackages.length;
-      let totalVse = 0;
-      let existsCount = 0;
-
-      bomPackages.forEach(pkg => {
-        pkg.vseList.forEach(v => {
-          totalVse++;
-          if (v.alreadyExistsInLuminovo) existsCount++;
-        });
-      });
-
-      let csvRows = [];
-      csvRows.push([`"Date"`, `"${currentDate}"`, `"Work Allocation"`, `"${allocatedBy || ''}"`]);
-      csvRows.push([`"No. of resources working"`, `"${ALL_MEMBERS.length}"`, `"Shipment"`, `"${shipmentBy || ''}"`]);
-      csvRows.push([`"Number of BoMs"`, `"${totalBoms}"`, `""`, `""`]);
-      csvRows.push([`"Number of Files"`, `"${totalVse}"`, `""`, `""`]);
-      csvRows.push([`"Exists in Luminovo Files"`, `"${existsCount}"`, `""`, `""`]);
-      csvRows.push([]);
-
-      csvRows.push([
-        `"Work Allocation Date from VSE"`,
-        `"Assigned to"`,
-        `"Part number"`,
-        `"VSE BoM"`,
-        `"Luminovo Uploading Assigned to"`,
-        `"VSE BoM Reviewer"`,
-        `"Working File Status"`,
-        `"VSE BOM Review Status"`,
-        `"Review Time"`,
-        `"Luminovo Upload Status"`,
-        `"Luminovo Reviewer"`,
-        `"Luminovo Review Status"`,
-        `"Status of files After Review"`,
-        `"Notes(From BoM) -& Reviewer Comments"`,
-        `"Assigned to Comments (Email Notes)"`,
-        `"Completed date"`,
-        `"Filled in To_VSE Status"`,
-        `"Status of files Move to DONE folder"`,
-        `"Reviewer status & Comments"`,
-        `"Total Time "`
-      ]);
-
-      bomPackages.forEach(pkg => {
-        pkg.vseList.forEach((vse, idx) => {
-          let reviewerNotes = [];
-          vse.stages.forEach(st => {
-            if (st.reworkNote) reviewerNotes.push(`${st.name} Rework: ${st.reworkNote}`);
-            if (st.correctionNote) reviewerNotes.push(`${st.name} Fix (${st.correctionNote.from}): ${st.correctionNote.text}`);
-          });
-
-          let emailNotes = (vse.emailHandoverNotes || []).map(n => `[${n.from}]: ${n.text}`).join(" | ");
-
-          const isFileDone = isVseFullyCompleted(vse);
-          let assigned1 = vse.stages[0].owner;
-          let reviewer1 = vse.stages.length > 2 ? vse.stages[1].owner : "-";
-          let uploadAssignee = vse.stages.find(s => s.name === "Luminovo Upload")?.owner || "-";
-          let lumReviewer = vse.stages.find(s => s.name === "Luminovo Review")?.owner || "-";
-
-          let finalStatus = "";
-          if (vse.isPending) {
-            finalStatus = `PENDING (${vse.pendingReason || 'In Progress'})`;
-          } else if (vse.alreadyExistsInLuminovo) {
-            finalStatus = 'EXISTS IN LUMINOVO';
-          } else if (isFileDone) {
-            finalStatus = 'READY FOR EMAIL';
-          } else {
-            finalStatus = 'IN PROGRESS';
-          }
-
-          csvRows.push([
-            `"${idx === 0 ? (pkg.workflowMode === 'VSE_BOM' ? pkg.bomName : pkg.workflowMode) : ''}"`,
-            `"${assigned1}"`,
-            `"${vse.partNumber || ''}"`,
-            `"${vse.fileName || ''}"`,
-            `"${uploadAssignee}"`,
-            `"${reviewer1}"`,
-            `"${vse.stages[0].status}"`,
-            `"${vse.stages.length > 1 ? vse.stages[1].status : '-'}"`,
-            `"${vse.stages.length > 1 ? vse.stages[1].duration || '-' : '-'}"`,
-            `"${vse.stages.find(s => s.name === 'Luminovo Upload')?.status || '-'}"`,
-            `"${lumReviewer}"`,
-            `"${vse.stages[vse.stages.length - 1].status}"`,
-            `"${finalStatus}"`,
-            `"${reviewerNotes.join(' | ')}"`,
-            `"${emailNotes}"`,
-            `"${isFileDone ? currentDate : ''}"`,
-            `"${isFileDone ? 'DONE' : 'PENDING'}"`,
-            `"${isFileDone ? 'YES' : 'NO'}"`,
-            `"${vse.alreadyExistsInLuminovo ? 'Already Exists' : ''}"`,
-            `"${vse.stages[vse.stages.length - 1].duration || '-'}"`
-          ]);
-        });
-      });
-
-      const csvContent = "data:text/csv;charset=utf-8," + csvRows.map(e => e.join(",")).join("\n");
-      const link = document.createElement("a");
-      link.setAttribute("href", encodeURI(csvContent));
-      link.setAttribute("download", `Pricing_Work_Allocation_${currentDate}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-
-    // =========================================================================
-    // INITIAL EXECUTION
-    // =========================================================================
-    window.addEventListener('DOMContentLoaded', () => {
-      checkAuthStatus();
-      setInitialDate();
-      initHeaderDropdowns();
-      listenToDateData();
-    });
-  </script>
-</body>
-</html>
+    
