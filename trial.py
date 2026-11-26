@@ -35,24 +35,27 @@ def apply_tint(hex_color, tint):
 
 
 def get_xlsx_theme_colors(wb):
-    theme_colors = ["FFFFFF", "000000", "E7E6E6", "44546A", "4472C4", "ED7D31", "A5A5A5", "FFC000", "5B9BD5", "70AD47"]
+    theme_colors = [
+        "FFFFFF", "000000", "E7E6E6", "44546A", "4472C4",
+        "ED7D31", "A5A5A5", "FFC000", "5B9BD5", "70AD47",
+    ]
     try:
         if wb.loaded_theme:
             root = ET.fromstring(wb.loaded_theme)
-            ns = {'a': 'http://schemas.openxmlformats.org/drawingml/2006/main'}
-            clr_scheme = root.find('.//a:clrScheme', ns)
+            ns = {"a": "http://schemas.openxmlformats.org/drawingml/2006/main"}
+            clr_scheme = root.find(".//a:clrScheme", ns)
             if clr_scheme is not None:
-                order = ['lt1', 'dk1', 'lt2', 'dk2', 'accent1', 'accent2', 'accent3', 'accent4', 'accent5', 'accent6']
+                order = ["lt1", "dk1", "lt2", "dk2", "accent1", "accent2", "accent3", "accent4", "accent5", "accent6"]
                 extracted = []
                 for tag in order:
-                    node = clr_scheme.find(f'a:{tag}', ns)
+                    node = clr_scheme.find(f"a:{tag}", ns)
                     if node is not None:
-                        srgb = node.find('a:srgbClr', ns)
-                        sysclr = node.find('a:sysClr', ns)
-                        if srgb is not None and 'val' in srgb.attrib:
-                            extracted.append(srgb.attrib['val'].upper())
-                        elif sysclr is not None and 'lastClr' in sysclr.attrib:
-                            extracted.append(sysclr.attrib['lastClr'].upper())
+                        srgb = node.find("a:srgbClr", ns)
+                        sysclr = node.find("a:sysClr", ns)
+                        if srgb is not None and "val" in srgb.attrib:
+                            extracted.append(srgb.attrib["val"].upper())
+                        elif sysclr is not None and "lastClr" in sysclr.attrib:
+                            extracted.append(sysclr.attrib["lastClr"].upper())
                 if len(extracted) == 10:
                     theme_colors = extracted
     except Exception:
@@ -78,8 +81,7 @@ def resolve_openpyxl_color(color_obj, theme_colors, is_bg=True):
     elif ctype == "theme":
         idx = color_obj.theme
         if 0 <= idx < len(theme_colors):
-            base_hex = theme_colors[idx]
-            final_hex = apply_tint(base_hex, getattr(color_obj, "tint", 0.0))
+            final_hex = apply_tint(theme_colors[idx], getattr(color_obj, "tint", 0.0))
             if is_bg and final_hex == "FFFFFF":
                 return None
             if not is_bg and final_hex == "000000":
@@ -123,26 +125,12 @@ def get_cell_style(wb, sh, r, c, is_xls, theme_colors=None):
     return bg_hex, font_hex
 
 
-def get_row_styles_map(wb, sh, r, cmap, total_cols, is_xls, theme_colors=None):
+def get_row_styles_map(wb, sh, r, cmap, is_xls, theme_colors=None):
     cell_styles = {}
-    fallback_bg, fallback_fg = None, None
-
-    priority_keys = ["mpn", "vse_item", "manufacturer", "description", "lvl"]
-    priority_cols = [cmap[k] for k in priority_keys if k in cmap]
-    other_cols = [c for c in range(total_cols) if c not in priority_cols]
-
-    for c in priority_cols + other_cols:
-        bg, fg = get_cell_style(wb, sh, r, c, is_xls, theme_colors)
-        if bg and not fallback_bg:
-            fallback_bg = bg
-        if fg and not fallback_fg:
-            fallback_fg = fg
-
     for key, col_idx in cmap.items():
         bg, fg = get_cell_style(wb, sh, r, col_idx, is_xls, theme_colors)
-        cell_styles[key] = (bg or fallback_bg, fg or fallback_fg)
-
-    cell_styles["_row_default"] = (fallback_bg, fallback_fg)
+        cell_styles[key] = (bg, fg)
+    cell_styles["_row_default"] = (None, None)
     return cell_styles
 
 
@@ -162,7 +150,7 @@ def extract_bom_data(bom_file):
         sh_fmt = wb_fmt[sname]
         theme_colors = get_xlsx_theme_colors(wb_fmt)
 
-    meta = dict(customer_id="", ship_site="")
+    meta = {"customer_id": "", "ship_site": ""}
     hdr_idx = None
     for r in range(min(20, len(df))):
         rvals = [clean_header(v) for v in df.iloc[r]]
@@ -181,7 +169,7 @@ def extract_bom_data(bom_file):
         raise ValueError("Could not find 'VSE Item' and 'Manufacturer' headers in the BOM file.")
 
     bh = [clean_header(v) for v in df.iloc[hdr_idx]]
-    cmap = dict()
+    cmap = {}
     rules = [
         ("lvl", lambda h: h == "lvl"),
         ("vse_item", lambda h: h == "vse item"),
@@ -204,17 +192,22 @@ def extract_bom_data(bom_file):
         if any(pd.notna(df.iloc[r, cmap[k]]) and str(df.iloc[r, cmap[k]]).strip() != "" for k in ["lvl", "vse_item", "manufacturer", "mpn"] if k in cmap):
             last_row = r
 
-    records, parent = [], dict()
+    records, parent = [], {}
     for r in range(hdr_idx + 1, last_row + 1):
         row = df.iloc[r]
-        val = lambda k: ("" if (str(row[cmap[k]]).strip() == "0" and k == "vendor_id") else str(row[cmap[k]]).strip()) if (k in cmap and pd.notna(row[cmap[k]])) else ""
-        lvl, vse, mfg, mpn = val("lvl"), val("vse_item"), val("manufacturer"), val("mpn")
 
-        styles_map = get_row_styles_map(wb_fmt, sh_fmt, r, cmap, len(bh), is_xls, theme_colors)
+        def val(k):
+            if k in cmap and pd.notna(row[cmap[k]]):
+                s = str(row[cmap[k]]).strip()
+                return "" if (s == "0" and k == "vendor_id") else s
+            return ""
+
+        lvl, vse, mfg, mpn = val("lvl"), val("vse_item"), val("manufacturer"), val("mpn")
+        styles_map = get_row_styles_map(wb_fmt, sh_fmt, r, cmap, is_xls, theme_colors)
 
         if not lvl and not vse and not mfg and not mpn:
-            parent = dict()
-            records.append(dict(_styles=styles_map))
+            parent = {}
+            records.append({"_styles": styles_map})
             continue
 
         if lvl or vse:
@@ -271,33 +264,47 @@ def map_header_to_key(hc):
 
 
 def fill_trial_template(trial_file, records):
-    wb = openpyxl.load_workbook(trial_file)
+    wb = openpyxl.load_workbook(trial_file, data_only=False)
     ws = wb.active
     th = [clean_header(ws.cell(1, c).value) for c in range(1, ws.max_column + 1)]
-    sec = set(["main", "planning", "controls", "vse", "item coset", "item cost", "customer contract", "item mfgr"])
+    sec = {"main", "planning", "controls", "vse", "item coset", "item cost", "customer contract", "item mfgr"}
     bf = copy(ws.cell(2, 1).font) if ws.max_row >= 2 else Font(name="Calibri", size=11)
+
+    base_formulas = {}
+    if ws.max_row >= 2:
+        for c_idx in range(1, ws.max_column + 1):
+            val = ws.cell(2, c_idx).value
+            if isinstance(val, str) and val.startswith("="):
+                base_formulas[c_idx] = val
 
     for r_idx, rec in enumerate(records, start=2):
         styles_map = rec.get("_styles", {})
-        default_bg, default_fg = styles_map.get("_row_default", (None, None))
 
         for c_idx, hc in enumerate(th, start=1):
-            if hc in sec or not hc:
-                v = ""
-            elif "vendor id" in hc:
-                v = rec.get("vendor id", "")
+            cell = ws.cell(row=r_idx, column=c_idx)
+            existing_val = cell.value
+
+            if isinstance(existing_val, str) and existing_val.startswith("="):
+                pass
+            elif c_idx in base_formulas:
+                cell.value = re.sub(r"(?<=[A-Z])2\b", str(r_idx), base_formulas[c_idx])
             else:
-                v = rec.get(hc, next((val for k, val in rec.items() if k != "_styles" and k and k in hc), ""))
+                if hc in sec or not hc:
+                    v = ""
+                elif "vendor id" in hc:
+                    v = rec.get("vendor id", "")
+                else:
+                    v = rec.get(hc, next((val for k, val in rec.items() if k != "_styles" and k and k in hc), ""))
+                cell.value = v
 
             skey = map_header_to_key(hc)
-            bg, fg = styles_map.get(skey, (default_bg, default_fg))
+            bg, fg = styles_map.get(skey, (None, None))
 
-            cell = ws.cell(row=r_idx, column=c_idx, value=v)
             cf = copy(bf)
             cf.color = fg if fg else "000000"
             cell.font = cf
 
-            if bg:
+            if bg and bg.upper() not in ("FFFFFF", "00000000"):
                 cell.fill = PatternFill(start_color=bg, end_color=bg, fill_type="solid")
             else:
                 cell.fill = PatternFill(fill_type=None)
@@ -316,10 +323,10 @@ with c2:
 
 if t_up and b_up and st.button("Fill Template & Download", type="primary"):
     try:
-        with st.spinner("Extracting BOM items and preserving exact colors..."):
+        with st.spinner("Extracting BOM items and preserving exact colors & formulas..."):
             recs = extract_bom_data(b_up)
             f_xl = fill_trial_template(t_up, recs)
-            st.success(f"Successfully populated {len(recs)} rows with exact source colors!")
+            st.success(f"Successfully populated {len(recs)} rows with exact source colors & formulas!")
             st.dataframe(pd.DataFrame(recs).drop(columns=["_styles"], errors="ignore").head(20), use_container_width=True)
             st.download_button(
                 "Download Filled Excel",
